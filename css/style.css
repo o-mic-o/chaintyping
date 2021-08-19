@@ -1,0 +1,339 @@
+html, body, header, nav, h1, a,
+ul, li, strong, main, button, i,
+section, img, div, h1, h2, h3, h4, h5, p, form,
+fieldset, label, input, textarea,
+span, article, footer, time, small {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  text-align: inherit;
+  text-decoration: inherit;
+  vertical-align: inherit;
+  background-color:inherit;
+  font-family: Raleway, sans-serif;
+}
+
+
+
+.typing-game, #game-start-lost-overlay{
+  background-color: #000028;
+  background-image:
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%);
+  background-size: 4px 4px, 3px 3px, 5px 5px, 3px 3px, 6px 6px, 4px 4px, 5px 5px, 4px 4px, 6px 6px, 3px 3px, 5px 5px, 4px 4px, 3px 3px, 6px 6px, 5px 5px, 4px 4px, 5px 5px, 6px 6px;
+  background-position: 20% 10%, 5% 20%, 10% 75%, 22% 35%, 30% 30%, 40% 50%, 45% 20%, 65% 20%, 85% 30%, 98% 90%, 20% 80%, 50% 80%, 75% 80%, 89% 75%, 90% 95%, 60% 70%, 65% 40%, 90% 20%;
+  background-repeat: no-repeat;
+  animation: twinkle ease-in 0.3s infinite;
+}
+
+@keyframes twinkle{
+  to{
+  background-image:
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%),
+  radial-gradient(circle, rgba(255,255,255,0.7) 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%),
+  radial-gradient(circle, #fff 20%, transparent 30%);  }
+}
+
+
+
+
+
+
+body {
+  background-color: black;
+  color:white;
+  padding:0px;
+}
+.padding-top {
+  padding-top:30px;
+}
+#notification {
+  background-color: #000028;
+  border:1px solid #333;
+  left: 0;
+  font-size: 0.8em;
+  margin: 1em;
+  padding: 1em;
+  position: fixed;
+  top: 0;
+}
+aside footer {
+  display: flex;
+  font-size: 0.9em;
+  justify-content: space-between;
+  margin-top: 0.5em;
+}
+aside footer *:first-child {
+  color: var(--success);
+}
+aside footer *:last-child {
+  color: var(--gray);
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: auto;
+    padding: 0;
+}
+.input-container {
+  margin-top:50px;
+}
+.typing-game{
+    display: block;
+    position: relative;
+    border:1px solid #333;
+   /* background-color: rgb(34, 12, 66);*/
+}
+
+.hidden {
+  display:none;
+}
+
+#game-start-lost-overlay.hide {
+  display:none;
+}
+#game-start-lost-overlay, .typing-game {
+  height:500px;
+  width:1000px;
+}
+#game-start-lost-overlay {
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000028;
+}
+.game-bottom {
+  margin-top: 8px;
+}
+.game-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  justify-content: center;
+}
+
+.flex {
+  display:flex;
+}
+.justify-content-start {
+  justify-content: flex-start;
+}
+
+
+.group {
+  display: flex;
+  align-items: center;
+}
+
+.game-selection{
+  margin-left:15px;
+  background-color: rgb(77, 77, 77);
+  padding:10px;
+}
+.pointer {
+  cursor: pointer;
+}
+
+.pointer:hover{
+  background-color:rgb(8, 8, 8);
+}
+
+.stats-label-left{
+  margin-right:15px;
+}
+
+.stats-label-right {
+  margin-left:5px;
+}
+
+.stats-label{
+  background-color:#000028;
+  border:1px solid #333;
+  padding:10px;
+  color:white;
+  min-width: 15px;
+  min-height: 17px;
+}
+
+#typing-input {
+  display: block;
+  border-radius: 2px;
+  padding: 15px;
+  line-height: 1.5;
+  border: 2px solid #eee;
+  background-color: rgb(29, 29, 29);
+  margin-right: 8px;
+  font-weight: 200;
+  font-size:24px;
+  color:white;
+}
+#words.hide {
+  display:none;
+}
+#words {
+  position: relative;
+  display: flex;
+  width: auto;
+  font-size: 24px;
+  margin-bottom: 8px;
+  align-items: flex-end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.hide {
+  display:none;
+}
+.word{
+    padding: 5px 5px;
+    margin: 0 1px;
+    border-radius: 2px;
+    letter-spacing: 2px;
+}
+
+.word.current-word {
+  background-color: rgb(0, 0, 0);;
+}
+
+.purple {
+  color: rgb(175, 162, 230);
+}
+.char{
+  color:white;
+}
+
+.red, .word.wrong .char, .word.wrong .current-char, .char.wrong-char {
+  color:rgb(252, 70, 70);
+}
+.green, .word.correct, .word.correct .current-char, .word .current-char{
+  color:rgb(85, 248, 85);
+}
+#top-banner{
+  margin:5px 0 5px 0;
+}
+
+.current-word {
+  position: absolute;
+  top: 0;
+  z-index:3;
+}
+.circle {
+    border-radius: 50%;
+    height:10px;
+    width:10px;
+    background-color: yellow;
+    position:absolute;
+    z-index: 3;
+}
+
+@keyframes MoveUpDown{
+    from {top: 460px;}
+    to{ down:0px; }
+}
+@-moz-keyframes MoveUpDown{
+    from {top: 460px;}
+    to{ down:0px; }
+}
+@-webkit-keyframes MoveUpDown{
+    from {top: 460px;}
+    to{ down:0px; }
+}​
+
+#signed-out-flow {
+  padding:30px;
+}
+#choose-avatar {
+  padding:15px;
+}
+#choose-avatar h2 {
+  padding-bottom:30px;
+  font-weight:200;
+}
+#avatar-canvas {
+  width: 160px;
+  height: 160px;
+}
+#pallet{
+  padding-bottom:30px;
+  display:flex;
+}
+
+.pixel {
+  width: 20px;
+  height: 20px;
+  float: left;
+  box-shadow: 0px 0px 3px #fff;
+  cursor:pointer;
+}
+#current-avatar-canvas{
+  position: absolute;
+  width:40px;
+  height:40px;
+  transition-property: left, right;
+  transition-duration: 0.3s;
+}
+.sm-pixel {
+  width: 5px;
+  height: 5px;
+  float: left;
+  box-shadow: 0px 0px 3px #fff;
+}
+.pixel:hover {
+  background-color:gray;
+}
+
+#faq{
+  max-width: 900px;
+  font-weight: 100;
+  padding:0 15px 0 15px;
+}
+#faq ul {
+  margin-left:15px;
+}
+#faq p {
+  margin-top:15px;
+}
+
+@media screen and (max-width:800px) {
+  .group {
+    display:block;
+  }
+  #game-start-lost-overlay, .typing-game{
+    height:300px;
+    width:100%;
+  }
+}

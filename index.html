@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>chain typing | play to earn</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <audio id="audio-player" loop>
+    <source src="https://ipfs.io/ipfs/QmUBMbpF6Lfs1qUPC5ZotaXrgEZrgvdYQYm87ap3EoBQ7H" type="audio/ogg" >
+    Your browser does not support the audio element.
+  </audio>
+
+  <div id="signed-out-flow" class="hide">
+    <div class="group" style="margin-top:5px;">
+      <div id="sign-in-button" class="green pointer stats-label stats-label-left">login with NEAR</div>
+      <div class="stats-label stats-label-left green"><span class="eligible-words-for-today"></span> eligible words today with 8.5 N</div>
+      <div class="stats-label stats-label-left"><a href="chain_typing_whitepaper.pdf">whitepaper draft</a></div>
+      <div class="pointer stats-label stats-label-left" onclick='document.querySelector("#choose-avatar").classList.remove("hide");document.querySelector("#faq").classList.add("hide");'>get chain avatar</div>
+      <div class="pointer stats-label stats-label-left"
+        onclick='document.querySelector("#faq").classList.remove("hide");document.querySelector("#choose-avatar").classList.add("hide");'>faq</div>
+      <div id="player-container">
+        <div id="play-pause-one" class="pointer stats-label stats-label-left">play music</div>
+      </div>
+    </div>
+    <div id="faq">
+      <div class="padding-top" >
+        <b>Welcome to chain typing.</b>
+        <p>This is a blockchain typing game, to help improve your efficiency at typing. By playing this typing game,
+        you will earn micropayments of NEAR.</p>
+
+        <p>This game is play to earn. In order to play the game, you need to own a <b>Chain Avatar</b> NFT.
+          All proceeds from NFT sales go into a vault. This vault will stake rewards, and rewards
+        from staking will be used to pay gamers who play the typing game.There will only be 1000 Generation 0 <b>Chain Avatars</b> available.</p>
+
+        <p>This game is an experiment in gamifying shared staking rewards, provides no guarentees, no liability, and no warranty at all. Chain Avatar sales are non-refundable, and provide no guarentees of service.</p>
+          <p>
+            <b>Credits:</b>
+            <ul>
+              <li>Concept and coding by mic</li>
+              <li>Smart contract advising by Danielo</li>
+              <li>With help from <a href="https://humanguild.io" class="purple" target="_blank">humanguild.io</a></li>
+              <li>Music by <a target="_blank" class="purple" href="https://patrickdearteaga.com ">patrickdearteaga.com</a></li>
+            </ul>
+          </p>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="top-banner" class="signed-in-flow hide">
+    <div class="group" style="justify-content: center;">
+      <div class="stats-label stats-label-left " id="contract-link"></div>
+      <div class="stats-label stats-label-left ">previous level <span id="last_level"></span></div>
+      <div class="stats-label stats-label-left ">wpm <span id="last_wpm"></span></div>
+      <div class="stats-label stats-label-left ">accuracy <span id="last_accuracy"></span></div>
+      <div class="stats-label stats-label-left green "><span id="pending-rewards-total">0 N</span></div>
+
+    </div>
+  </div>
+
+  <div id="game-container" class="game-container">
+    <div class="game-top" style="margin-top:5px;">
+      <div class="signed-in-flow group hide">
+        <div class="group">
+          <div id="save-game-results-and-claim" class="pointer stats-label stats-label-right green">withdraw</div>
+          <div id="rewards-pending" class="pointer stats-label stats-label-right green">0 N</div>
+          <div class="pointer stats-label stats-label-right "><span class="eligible-words-for-today"></span> eligible words</div>
+          <div class="stats-label stats-label-right" id="account-id"></div>
+          <div class="stats-label stats-label-right"><span id="levels-played">0</span></div>
+          <div class="stats-label stats-label-right"><span id="level"></span></div>
+          <div class="stats-label stats-label-right"><span id="wpm"></span></div>
+          <div class="stats-label stats-label-right"><span id="accuracy"></span></div>
+          <div class="stats-label stats-label-right"><span id="minutes">00</span>:<span id="seconds">00</span></div>
+          <div id="player-container">
+              <div id="play-pause" class="pointer stats-label stats-label-right purple">music</div>
+          </div>
+          <div class="stats-label stats-label-right red pointer" id="sign-out-button">logout</div>
+
+        </div>
+      </div>
+    </div>
+
+    <div id="typing-game" class="signed-in-flow hide typing-game">
+      <div id="game-start-lost-overlay">loading game</div>
+      <div id="words" class="hide"></div>
+    </div>
+    <div class="game-bottom">
+      <div class="flex justify-content-start">
+        <div class="signed-in-flow hide">
+          <div class="flex justify-content-start">
+            <div id="current-avatar-canvas"></div>
+            <div class="group">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="choose-avatar" class="hide">
+    <h2>create chain avatar - cost: 100 N</h2>
+    <div id="current-color-selection" class="pixel" style="margin-right:20px;border:1px solid white;"></div>
+    <div id="pallet">
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+      <div class="pixel pointer"></div>
+    </div>
+    <div id="avatar-canvas">
+
+    </div>
+  </div>
+
+
+  <aside id="notification" class="hide">
+    <a target="_blank" href="https://explorer.testnet.near.org/accounts/"></a>
+    called method: 'savedGameResultToChain' in contract:
+    <a target="_blank" href="https://explorer.testnet.near.org/accounts/"></a>
+    <footer>
+      <div>✔ Succeeded</div>
+      <div>Just now</div>
+    </footer>
+  </aside>
+  <script>
+      var track = document.getElementById('audio-player');
+
+      var control_btn = document.getElementById('play-pause-one');
+      var control_btn_two = document.getElementById('play-pause');
+
+      function playPause() {
+        if (track.paused) {
+          track.play();
+          control_btn.innerHTML = "pause music"
+          control_btn_two.innerHTML = "pause music"
+        } else {
+          track.pause();
+          control_btn.innerHTML = "music"
+          control_btn_two.innerHTML = "music"
+        }
+      }
+
+      control_btn.addEventListener("click", playPause);
+      control_btn_two.addEventListener("click", playPause);
+      track.addEventListener("ended", function () {
+        control_btn.className = "play";
+      });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.41.0/dist/near-api-js.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+
+</html>
