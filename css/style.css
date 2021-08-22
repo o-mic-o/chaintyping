@@ -15,7 +15,22 @@ span, article, footer, time, small {
   font-family: Raleway, sans-serif;
 }
 
-
+.faq-section {
+  background-color:#000028;
+  border: 1px solid #333;
+  margin-top:5px;
+  padding:30px;
+  max-width:900px;
+  margin:0 auto;
+}
+.night .typing-game, .night #game-start-lost-overlay, .night .faq-section, .night .stats-label {
+  background-color: white;
+  color:black;
+}
+.main-top-section {
+ justify-content: center;
+ padding-bottom:5px;
+}
 
 .typing-game, #game-start-lost-overlay{
   background-color: #000028;
@@ -67,28 +82,77 @@ span, article, footer, time, small {
   radial-gradient(circle, #fff 20%, transparent 30%);  }
 }
 
-
-
-
-
-
+body.night{
+  background-color: #f3f3f3;
+  color:black;
+}
 body {
   background-color: black;
   color:white;
   padding:0px;
 }
 .padding-top {
-  padding-top:30px;
+  padding-top:5px;
+}
+.night #notification {
+  background-color: #f3f3f3;
+}
+#mural {
+  display:flex;
+  flex-wrap: wrap;
+  padding-top:50px;
+}
+#mural.hide {
+  display:none;
+}
+.account-avatar-canvas .truncate{
+  font-size:0.9rem;
+  font-weight: 200;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avatar-box{
+  border:1px solid #333;
+  padding:5px;
+  min-width:70px;
+  display: flex;
+  flex-wrap: wrap;
+}
+.night .avatar-box {
+  border:1px solid lightgray;
+}
+.avatar-box:hover{
+  background-color:rgb(8, 8, 8);
+}
+.night .avatar-box:hover {
+  background-color: #f3f3f3;
 }
 #notification {
   background-color: #000028;
-  border:1px solid #333;
-  left: 0;
+  border-top:none;
+  border-right:none;
+  border-bottom:1px solid #333;
+  border-left:1px solid #333;
+  right: 0;
   font-size: 0.8em;
-  margin: 1em;
-  padding: 1em;
-  position: fixed;
+  padding:10px;
+  position: absolute;
   top: 0;
+}
+#rank-sort{
+  position: absolute;
+  top:0;
+  right:0;
+  border-right:none;
+  border-top:none;
+}
+#words-sort{
+  position: absolute;
+  top:0;
+  left:0;
+  border-left:none;
+  border-top:none;
 }
 aside footer {
   display: flex;
@@ -168,7 +232,9 @@ aside footer *:last-child {
 .pointer {
   cursor: pointer;
 }
-
+.night .pointer:hover {
+  background-color: #f3f3f3;
+}
 .pointer:hover{
   background-color:rgb(8, 8, 8);
 }
@@ -185,9 +251,10 @@ aside footer *:last-child {
   background-color:#000028;
   border:1px solid #333;
   padding:10px;
+  font-size:0.8em;
   color:white;
   min-width: 15px;
-  min-height: 17px;
+  min-height: 15px;
 }
 
 #typing-input {
@@ -209,7 +276,7 @@ aside footer *:last-child {
   position: relative;
   display: flex;
   width: auto;
-  font-size: 24px;
+  font-size: 16px;
   margin-bottom: 8px;
   align-items: flex-end;
   justify-content: flex-end;
@@ -223,6 +290,11 @@ aside footer *:last-child {
     margin: 0 1px;
     border-radius: 2px;
     letter-spacing: 2px;
+    font-weight:200;
+}
+
+.night .word.current-word {
+  background-color: lightgray;
 }
 
 .word.current-word {
@@ -232,6 +304,9 @@ aside footer *:last-child {
 .purple {
   color: rgb(175, 162, 230);
 }
+.night .char {
+  color:black;
+}
 .char{
   color:white;
 }
@@ -239,8 +314,14 @@ aside footer *:last-child {
 .red, .word.wrong .char, .word.wrong .current-char, .char.wrong-char {
   color:rgb(252, 70, 70);
 }
+.night .red, .night .word.wrong .char, .night .word.wrong .current-char, .night .char.wrong-char {
+  color:rgb(252, 70, 70);
+}
 .green, .word.correct, .word.correct .current-char, .word .current-char{
   color:rgb(85, 248, 85);
+}
+.night .green, .night .word.correct, .night .word.correct .current-char, .night .word .current-char{
+  color:rgb(53, 180, 53);
 }
 #top-banner{
   margin:5px 0 5px 0;
@@ -276,14 +357,17 @@ aside footer *:last-child {
 #signed-out-flow {
   padding:30px;
 }
+
 #choose-avatar {
   padding:15px;
+  max-width: 300px;
 }
 #choose-avatar h2 {
   padding-bottom:30px;
   font-weight:200;
 }
-#avatar-canvas {
+
+#avatar-canvas{
   width: 160px;
   height: 160px;
 }
@@ -299,41 +383,114 @@ aside footer *:last-child {
   box-shadow: 0px 0px 3px #fff;
   cursor:pointer;
 }
-#current-avatar-canvas{
+.night .pixel {
+  box-shadow: 0px 0px 3px black;
+}
+#current-avatar-canvas {
   position: absolute;
   width:40px;
   height:40px;
   transition-property: left, right;
   transition-duration: 0.3s;
 }
+#display-avatar-canvas, #account-avatar-canvas, .account-avatar-canvas {
+  width:40px;
+  height:40px;
+}
+ .account-avatar-canvas {
+   position: relative;
+    display: flex;
+    width:80px;
+    flex-direction: column;
+    margin:0 15px 15px 15px;
+    height:100%;
+ }
+ .md-pixel {
+   width:10px;
+   height:10px;
+   box-shadow:0px 0px 3px #fff;
+ }
 .sm-pixel {
   width: 5px;
   height: 5px;
   float: left;
   box-shadow: 0px 0px 3px #fff;
 }
+.night .sm-pixel, .night .md-pixel {
+    box-shadow: 0px 0px 3px #333;
+
+}
 .pixel:hover {
   background-color:gray;
 }
 
-#faq{
-  max-width: 900px;
-  font-weight: 100;
-  padding:0 15px 0 15px;
-}
 #faq ul {
   margin-left:15px;
+}
+#faq h3 {
+  padding:0;
 }
 #faq p {
   margin-top:15px;
 }
+#all-account-avatars {
+  display:flex;
+  flex-wrap: wrap;
+}
+.avatar-account-box {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    border: 2px solid transparent;
+}
+.descriptions {
+  display: none;
+  position: absolute;
+  top:0;
+  font-size:0.8rem;
+  word-break: break-all;
+  min-height: 83px;
+  width: 83px;
 
+}
+.account-avatar-canvas:hover > .descriptions {
+  display:block;
+}
+.selected-avatar > .avatar-account-box{
+  box-shadow: 0px 0px 15px #fff;
+}
+#my-account-data{
+  max-width:600px;
+  padding:40px 0 0px 0;
+  position: relative;
+}
+#contract-link{
+  position: absolute;
+  right:0;
+  top:0;
+  border-top:none;
+  border-right:none;
+}
+#my-account-link{
+  position: absolute;
+  left:0;
+  top:0;
+  border-top:none;
+  border-left:none;
+}
 @media screen and (max-width:800px) {
+  #my-account-data{
+    max-width: 100%;
+  }
   .group {
     display:block;
   }
   #game-start-lost-overlay, .typing-game{
     height:300px;
     width:100%;
+  }
+  .stats-label-right{
+    margin-left:0;
   }
 }
