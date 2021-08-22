@@ -6,78 +6,163 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>chain typing | play to earn</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+  <link rel="manifest" href="favicons/site.webmanifest">
 </head>
 
 <body>
   <audio id="audio-player" loop>
-    <source src="https://ipfs.io/ipfs/QmUBMbpF6Lfs1qUPC5ZotaXrgEZrgvdYQYm87ap3EoBQ7H" type="audio/ogg" >
+    <source src="https://ipfs.io/ipfs/QmUBMbpF6Lfs1qUPC5ZotaXrgEZrgvdYQYm87ap3EoBQ7H" type="audio/ogg">
     Your browser does not support the audio element.
   </audio>
 
   <div id="signed-out-flow" class="hide">
-    <div class="group" style="margin-top:5px;">
-      <div id="sign-in-button" class="green pointer stats-label stats-label-left">login with NEAR</div>
-      <div class="stats-label stats-label-left green"><span class="eligible-words-for-today"></span> eligible words today with 8.5 N</div>
-      <div class="stats-label stats-label-left"><a href="chain_typing_whitepaper.pdf">whitepaper draft</a></div>
-      <div class="pointer stats-label stats-label-left" onclick='document.querySelector("#choose-avatar").classList.remove("hide");document.querySelector("#faq").classList.add("hide");'>get chain avatar</div>
-      <div class="pointer stats-label stats-label-left"
-        onclick='document.querySelector("#faq").classList.remove("hide");document.querySelector("#choose-avatar").classList.add("hide");'>faq</div>
+
+    <div class="main-top-section group">
+      <div id="sign-in-button" class="green pointer stats-label stats-label-right">login with NEAR</div>
+      <div id="game-launcher" class="hide stats-label stats-label-right pointer green ">play game</div>
+      <div class="stats-label stats-label-right hide pointer" id="account-id"></div>
+      <div id="mural-button" class="stats-label stats-label-right pointer"
+        onclick='document.querySelector("#faq").classList.add("hide");document.querySelector("#mural-box").classList.remove("hide");'>
+        game mural</div>
+      <!--<div class="stats-label stats-label-left pointer"><a href="chain_typing_whitepaper.pdf">whitepaper draft</a></div>-->
+      <div id="get-avatar" class="hide pointer stats-label stats-label-right"
+        onclick='document.querySelector("#choose-avatar").classList.remove("hide");document.querySelector("#mural-box").classList.add("hide");document.querySelector("#my-account-data").classList.add("hide");'>
+        get chain avatar</div>
+      <div id="faq-button" class="pointer stats-label stats-label-right"
+        onclick='document.querySelector("#faq").classList.remove("hide");document.querySelector("#mural-box").classList.add("hide");'>
+        faq</div>
       <div id="player-container">
-        <div id="play-pause-one" class="pointer stats-label stats-label-left">play music</div>
+        <div id="play-pause-one" class="pointer stats-label stats-label-right">music</div>
       </div>
+      <div id="night" class="pointer stats-label stats-label-right">style</div>
+      <div class="stats-label stats-label-right red pointer hide" id="sign-out-button-two">logout</div>
     </div>
     <div id="faq">
-      <div class="padding-top" >
-        <b>Welcome to chain typing.</b>
-        <p>This is a blockchain typing game, to help improve your efficiency at typing. By playing this typing game,
-        you will earn micropayments of NEAR.</p>
+      <div>
+        <div class="faq-section">
+          <h3>Welcome to chain typing.</h3>
+          <div class="flex justify-content-start">
+            <div class="flex justify-content-start">
+              <div id="display-avatar-canvas"></div>
+              <div class="group">
+              </div>
+            </div>
+          </div>
 
-        <p>This game is play to earn. In order to play the game, you need to own a <b>Chain Avatar</b> NFT.
-          All proceeds from NFT sales go into a vault. This vault will stake rewards, and rewards
-        from staking will be used to pay gamers who play the typing game.There will only be 1000 Generation 0 <b>Chain Avatars</b> available.</p>
+          <p>This is a blockchain typing game, to help improve efficiency at typing.</p>
 
-        <p>This game is an experiment in gamifying shared staking rewards, provides no guarentees, no liability, and no warranty at all. Chain Avatar sales are non-refundable, and provide no guarentees of service.</p>
-          <p>
-            <b>Credits:</b>
-            <ul>
-              <li>Concept and coding by mic</li>
-              <li>Smart contract advising by Danielo</li>
-              <li>With help from <a href="https://humanguild.io" class="purple" target="_blank">humanguild.io</a></li>
-              <li>Music by <a target="_blank" class="purple" href="https://patrickdearteaga.com ">patrickdearteaga.com</a></li>
-            </ul>
+          <p>In order to play the game, you need to own a <b>Chain Avatar</b> NFT. Each Chain Avatar is represented on a
+            <b> Mural</b>, of all the typing characters.
+            There will only be 100 characters released for this v1, as generation 0. These are listed in order of most
+            words typed correctly. They may be used as a sort of advertising space, to hold a description.<br><br>
+            All proceeds from NFT sales go towards development of a version 2, which will be play to earn based on words
+            typed. There is no ETA for a v2.
           </p>
+
+          <p>This game is an experiment, provides no guarentees, no liability, and no warranty at all.
+            Chain Avatar creation are donations. They are non-refundable, and provide no guarentee of service.</p>
+        </div>
+        <div class="faq-section">
+          <p>
+          <h3 style="padding-bottom:15px;">Roadmap:</h3>
+          <ul>
+            <li>&#x2713; Version one - chain typing blockchain game</li>
+            <li>Get sufficient funding for developement of play to earn</li>
+            <li>Whitepaper release for play to earn game concept</li>
+            <li>Smart contract developement for version two</li>
+            <li>Improved UI for typing gameplay</li>
+          </ul>
+          </p>
+        </div>
+        <div class="faq-section">
+          <p>
+          <h3 style="padding-bottom:15px;">Credits:</h3>
+          <ul>
+            <li>Concept and coding by Michael</li>
+            <li>Smart contract advising by Danielo</li>
+            <li>With help from <a href="https://humanguild.io" class="purple" target="_blank">humanguild.io</a></li>
+            <li>Music by <a target="_blank" class="purple" href="https://patrickdearteaga.com ">patrickdearteaga.com</a>
+            </li>
+          </ul>
+          </p>
+        </div>
       </div>
     </div>
 
   </div>
+  <div id="my-account-data" class="hide faq-section">
 
-  <div id="top-banner" class="signed-in-flow hide">
-    <div class="group" style="justify-content: center;">
-      <div class="stats-label stats-label-left " id="contract-link"></div>
-      <div class="stats-label stats-label-left ">previous level <span id="last_level"></span></div>
-      <div class="stats-label stats-label-left ">wpm <span id="last_wpm"></span></div>
-      <div class="stats-label stats-label-left ">accuracy <span id="last_accuracy"></span></div>
-      <div class="stats-label stats-label-left green "><span id="pending-rewards-total">0 N</span></div>
+    <div class="flex justify-content-start">
+      <div class="flex justify-content-start">
+        <div id="account-avatar-canvas"></div>
+        <div class="group">
+        </div>
+      </div>
+    </div>
+    <div id="all-account-avatars"></div>
+    <div id="update-desc">
+      <input id="update-avatar-description" class="hide stats-label" style="width:90%;margin:0 5px 0 15px;"
+        placeholder="Select an avatar to edit description...">
+      <div class="group" style="justify-content: flex-start;">
+        <div class="stats-label pointer" id="update-description" style="margin-left:15px;margin-top:15px;">update
+          description</div>
+      </div>
+    </div>
+    <div style="border-bottom:1px solid #333;width:100%;padding-top:50px;"> </div>
 
+    <div class="group" style="justify-content: flex-start;">
+      <!--<div id="save-game-results-and-claim" class="pointer stats-label stats-label-right green">withdraw</div>-->
+      <div class="stats-label" id="my-account-link">my characters and stats</div>
+      <div class="stats-label" id="contract-link"></div>
+      <div class="stats-label ">previous level <span id="last_level"></span></div>
+      <div class="stats-label ">wpm <span id="last_wpm"></span></div>
+      <div class="stats-label">accuracy <span id="last_accuracy"></span></div>
+      <div class="stats-label">highest level <span id="highest-level-achieved"></span></div>
+
+
+      <!--<div class="stats-label stats-label-right green "><span id="pending-rewards-total">0 N</span></div>-->
     </div>
   </div>
+  <div id="mural-box" class="hide faq-section" style="position:relative;">
+    <div class="group" style="justify-content: flex-start;">
+      <div class="stats-label" id="rank-sort">levels rank</div>
+      <div class="stats-label" id="words-sort">words rank</div>
+    </div>
+    <div id="mural"></div>
+  </div>
+  <!--<div id="top-banner" class="signed-in-flow hide">
+    <div class="group" style="justify-content: center;">-->
+  <!--<div id="save-game-results-and-claim" class="pointer stats-label stats-label-right green">withdraw</div>
+      <div class="stats-label stats-label-right " id="contract-link"></div>
+      <div class="stats-label stats-label-right ">previous level <span id="last_level"></span></div>
+      <div class="stats-label stats-label-right ">wpm <span id="last_wpm"></span></div>
+      <div class="stats-label stats-label-right ">accuracy <span id="last_accuracy"></span></div>
+      <div class="stats-label stats-label-right green "><span id="pending-rewards-total">0 N</span></div>
+    </div>
+  </div>-->
 
-  <div id="game-container" class="game-container">
-    <div class="game-top" style="margin-top:5px;">
+  <div id="game-container" class="game-container hide">
+    <div class="game-top">
       <div class="signed-in-flow group hide">
         <div class="group">
-          <div id="save-game-results-and-claim" class="pointer stats-label stats-label-right green">withdraw</div>
-          <div id="rewards-pending" class="pointer stats-label stats-label-right green">0 N</div>
-          <div class="pointer stats-label stats-label-right "><span class="eligible-words-for-today"></span> eligible words</div>
-          <div class="stats-label stats-label-right" id="account-id"></div>
+          <!--<div id="rewards-pending" class="stats-label stats-label-right green">0 N</div>-->
+          <div id="back-to-inner-menu" onclick="displayInnerMenu(true)"
+            class="pointer stats-label stats-label-right green">back to menu</div>
+          <!--<div class="stats-label stats-label-right "><span class="eligible-words-for-today"></span> eligible words</div>-->
+
+          <!--<div class="stats-label stats-label-right" id="history">history</div>-->
           <div class="stats-label stats-label-right"><span id="levels-played">0</span></div>
           <div class="stats-label stats-label-right"><span id="level"></span></div>
           <div class="stats-label stats-label-right"><span id="wpm"></span></div>
           <div class="stats-label stats-label-right"><span id="accuracy"></span></div>
           <div class="stats-label stats-label-right"><span id="minutes">00</span>:<span id="seconds">00</span></div>
           <div id="player-container">
-              <div id="play-pause" class="pointer stats-label stats-label-right purple">music</div>
+            <div id="play-pause" class="pointer stats-label stats-label-right purple">music</div>
           </div>
+          <div id="night-two" class="pointer stats-label stats-label-right">style</div>
           <div class="stats-label stats-label-right red pointer" id="sign-out-button">logout</div>
 
         </div>
@@ -85,7 +170,10 @@
     </div>
 
     <div id="typing-game" class="signed-in-flow hide typing-game">
-      <div id="game-start-lost-overlay">loading game</div>
+      <aside id="notification">
+        loading game...
+      </aside>
+      <div id="game-start-lost-overlay"></div>
       <div id="words" class="hide"></div>
     </div>
     <div class="game-bottom">
@@ -101,8 +189,8 @@
     </div>
   </div>
 
-  <div id="choose-avatar" class="hide">
-    <h2>create chain avatar - cost: 100 N</h2>
+  <div id="choose-avatar" class="faq-section hide">
+    <div style="padding-bottom:15px;"><b>design and create chain typing NFT character</b></div>
     <div id="current-color-selection" class="pixel" style="margin-right:20px;border:1px solid white;"></div>
     <div id="pallet">
       <div class="pixel pointer"></div>
@@ -119,44 +207,67 @@
       <div class="pixel pointer"></div>
       <div class="pixel pointer"></div>
     </div>
-    <div id="avatar-canvas">
-
+    <div id="avatar-canvas"></div>
+    <input id="new-avatar-description" class="stats-label" style="width:90%;margin-top:5px;"
+      placeholder="Enter public description...">
+    <div style="margin-top:5px;" class="group">
+      <div id="mint-character-button" class="pointer stats-label stats-label-left green">donate and get character for 1
+        N</div>
     </div>
   </div>
 
-
-  <aside id="notification" class="hide">
-    <a target="_blank" href="https://explorer.testnet.near.org/accounts/"></a>
-    called method: 'savedGameResultToChain' in contract:
-    <a target="_blank" href="https://explorer.testnet.near.org/accounts/"></a>
-    <footer>
-      <div>✔ Succeeded</div>
-      <div>Just now</div>
-    </footer>
-  </aside>
   <script>
-      var track = document.getElementById('audio-player');
+    let muralBtn = document.querySelector("#mural-button");
 
-      var control_btn = document.getElementById('play-pause-one');
-      var control_btn_two = document.getElementById('play-pause');
+    muralBtn.addEventListener('click', function () {
+      q("#choose-avatar").classList.add("hide");
+      q("#mural-box").classList.remove("hide");
+      q("#my-account-data").classList.add("hide");
+    })
+    let accountBtn = document.querySelector("#account-id");
 
-      function playPause() {
-        if (track.paused) {
-          track.play();
-          control_btn.innerHTML = "pause music"
-          control_btn_two.innerHTML = "pause music"
-        } else {
-          track.pause();
-          control_btn.innerHTML = "music"
-          control_btn_two.innerHTML = "music"
-        }
+    accountBtn.addEventListener('click', function () {
+      q("#choose-avatar").classList.add("hide");
+      q("#mural-box").classList.add("hide");
+      q("#my-account-data").classList.remove("hide");
+    })
+
+    let night = document.querySelector("#night");
+    let body = document.querySelector("body");
+    let nightTwo = document.querySelector("#night-two");
+
+    function setBackground() {
+      if (body.classList.contains("night")) {
+        body.classList.remove("night");
+      } else {
+        body.classList.add("night");
       }
+    };
 
-      control_btn.addEventListener("click", playPause);
-      control_btn_two.addEventListener("click", playPause);
-      track.addEventListener("ended", function () {
-        control_btn.className = "play";
-      });
+    night.addEventListener('click', function () {
+      setBackground();
+    })
+    nightTwo.addEventListener('click', function () {
+      setBackground();
+    });
+    var track = document.getElementById('audio-player');
+
+    var controlBtn = document.getElementById('play-pause-one');
+    var controlBtnTwo = document.getElementById('play-pause');
+
+    function playPause() {
+      if (track.paused) {
+        track.play();
+      } else {
+        track.pause();
+      }
+    }
+
+    controlBtn.addEventListener("click", playPause);
+    controlBtnTwo.addEventListener("click", playPause);
+    track.addEventListener("ended", function () {
+      controlBtn.className = "play";
+    });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.41.0/dist/near-api-js.min.js"></script>
   <script src="js/main.js"></script>
