@@ -1,4 +1,6 @@
-const CONTRACT = 'dev-1629594141998-2974278'; // 'dev-1629561936055-1242489'; //'dev-1629594141998-2974278';
+const CONTRACT = 'chaintyping.simplegames.near'; // LIVE ON TESTNET 'dev-1629758831278-1504897';
+const NEAR_NETWORK_NAME = ".near";
+
 let game;
 let AVATAR_INDEXES = [];
 let ALL_AVATAR_DATA;
@@ -6,10 +8,22 @@ let PIXELS_TO_SUBMIT_FOR_AVATAR = [];
 let ALL_AVATARS = [];
 let CURRENT_AVATAR_INDEX = "";
 let IS_LOCKED = false;
-const NEAR_NETWORK_NAME = ".testnet";
 let IS_UPDATING_DESCRIPTION = false;
 let SET_SORTING_WATCHERS_ONCE = false;
 let CURRENT_PLAYER_INDEX;
+let IN_CURRENT_GAME = false;
+let DECOMPRESSED_AVATAR_DATA = [];
+let DECOMPRESSED_AVATAR_DESCRIPTIONS = [];
+let DECOMPRESSED_NEW_HIGHEST_LEVLES = [];
+let DECOMPRESSED_CORRECT_WORD_TOTALS = [];
+let DECOMPRESSED_IDS = [];
+let DECOMPRESSED_ADDRESSES = [];
+let CURRENT_AVATAR_TO_SUBMIT_INDEX = ""; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
+
+let ALL_PLAYERS = "";
+let CURRENT_ELIGIBLE_AMOUNT = 0;
+const CURRENT_PAY_RATE = 0.00003;
+const GAS_TO_ATTACH = 100000000000000;
 
 function q(input) { return document.querySelector(input); };
 function matchingCharArray(word_one, word_two) {
@@ -27,12 +41,13 @@ function matchingCharArray(word_one, word_two) {
     return false;
   }
 }
+q("#contract-link").innerHTML = CONTRACT;
 
 const near = new nearApi.Near({
   keyStore: new nearApi.keyStores.BrowserLocalStorageKeyStore(),
-  networkId: 'testnet',
-  nodeUrl: 'https://rpc.testnet.near.org',
-  walletUrl: 'https://wallet.testnet.near.org'
+  networkId: 'mainnet',
+  nodeUrl: 'https://rpc.mainnet.near.org',
+  walletUrl: 'https://wallet.mainnet.near.org'
 });
 
 const { utils } = nearApi
@@ -44,34 +59,29 @@ const contract = new nearApi.Contract(wallet.account(), CONTRACT, { //'dev-16288
     'getWordsList',
     'getPlayers',
     'getAvatars',
+    'getAvatarMintCount'
   ],
   changeMethods: [
-
-    'getLevelWords',
+    'initContract',
     'setWordList',
-    'getLastLevelPlayed',
-    'submitLastLevelPlayed',
-    'checkPayEligibleWordsForToday',
-    'initializeAvatarMinting',
-    'initializePlayers',
-    'importAvatar',
-
     'mintAvatar',
-    'sendDonations',
-
-    'updateAvatarDescription',
+    'getLevelWords',
+    'submitLastLevelPlayed',
+    //'getLastLevelPlayed',
     'getThisPlayerAddress',
-    //'getThisPlayerRewardsToClaim',
-    //'getThisPlayerWordCountEligibleForRewards',
-    //'getAndSetCurrentEligibleWordsForToday'
-
+    //'getThisPlayerWordsEligibleForRewards',
+    'sendDonations',
+    'updateAvatarDescription',
+    'moderatorRemoveAvatar',
+    'withdrawRewards',
+    'importAvatar'
   ]
 });
 
 const button = q('#sign-in-button');
 
 if (!wallet.isSignedIn()) {
-  button.textContent = "login with NEAR";
+  button.textContent = "Login with NEAR";
   q("#signed-out-flow").classList.remove("hide");
   getPublicAvatars();
 } else {
@@ -92,8 +102,9 @@ function displayInnerMenu(isSwitchingFromGame) {
   q("#account-id").classList.remove("hide");
   q("#faq-button").classList.add("hide");
   q("#get-avatar").classList.remove("hide");
-  q("#account-id").innerHTML = wallet._authData.accountId;
+  q("#account-id").innerHTML = wallet._authData.accountId.split(NEAR_NETWORK_NAME)[0];
   q("#contract-link").innerHTML = contract.contractId;
+  //q("#pending-rewards-total").classList.remove("hide");
 
   if (isSwitchingFromGame) {
     q("#signed-out-flow").classList.remove("hide");
@@ -110,27 +121,23 @@ document.getElementById('sign-in-button').addEventListener('click', () => {
       contractId: CONTRACT,
       methodNames: [
         'getWordsList',
-        //'checkPayEligibleWordsForToday',
-
-        'getLevelWords',
-        'setWordList',
-        'getLastLevelPlayed',
-        'submitLastLevelPlayed',
-        //'checkPayEligibleWordsForToday',
-        'initializeAvatarMinting',
-        'initializePlayers',
-        'importAvatar',
-
-        'mintAvatar',
-        'getAvatars',
         'getPlayers',
-        'sendDonations',
-
-        'updateAvatarDescription',
+        'getAvatars',
+        'initContract',
+        'setWordList',
+        'mintAvatar',
+        'getWordsList',
+        'getLevelWords',
+        'submitLastLevelPlayed',
+        //'getLastLevelPlayed',
         'getThisPlayerAddress',
-        //'getThisPlayerRewardsToClaim',
-        //'getThisPlayerWordCountEligibleForRewards',
-        //'getAndSetCurrentEligibleWordsForToday'
+        //'getThisPlayerWordsEligibleForRewards',
+        'sendDonations',
+        'updateAvatarDescription',
+        'moderatorRemoveAvatar',
+        'getAvatarMintCount',
+        'withdrawRewards',
+        'importAvatar'
       ]
     });
   }
@@ -157,19 +164,20 @@ function signedInProcess() {
       displayCurrentGameAvatar();
       generateCurrentAvatar();
       watchAvatarSelection();
+      q("#update-description").classList.remove("hide");
       updateDescriptionWatcher();
       proceedToGame();
     } else {
-      q("#all-account-avatars").innerHTML = '<div class="stats-label pointer green" onclick=\'' + 'q("#get-avatar").click();' + '\' style="border:none;width:100%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;">please get a chain avatar character to play!</div>';
+      q("#all-account-avatars").innerHTML = '<div class="stats-label pointer green" onclick=\'' + 'q("#get-avatar").click();' + '\' style="border:none;width:100%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;">Please get a chain avatar character to play!</div>';
     }
   });
 }
 
 function buildMural() {
-  console.log("Attempting to build mural");
+  //console.log("Attempting to build mural");
   q("#mural").innerHTML = "";
 
-  for (var i = 0; i < ALL_AVATAR_DATA.avatarData.length; i++) {
+  for (var i = 0; i < DECOMPRESSED_AVATAR_DATA.length; i++) {
     q("#mural").innerHTML += buildAvatarCanvas(i, false);
   }
   watchMuralSorting();
@@ -178,56 +186,115 @@ function buildMural() {
 
 function proceedToGame() {
   if (!IS_LOCKED) {
-    contract.getLastLevelPlayed({})
-      .then(result => {
-        //console.log(result);
-        if (result != null) {
-          q("#levels-played").innerHTML = result.levelCount;
-          q("#last_level").innerHTML = result.level;
-          q("#last_wpm").innerHTML = result.wpm;
-          q("#last_accuracy").innerHTML = result.accuracy;
-        }
-      });
-
     q("#game-launcher").addEventListener("click", function () {
       q("#signed-out-flow").classList.add("hide");
+      q("#choose-avatar").classList.add("hide");
       bootUpGame();
     });
   }
 }
+
 function importAvatar(address, data, description, incomingLevel, incomingCorrectWords) {
-  contract.importAvatar({ addressForOwner: address, incomingAvatarData: data, description: description, level: incomingLevel, correctWords: incomingCorrectWords })
+  var to_save = LZUTF8.compress(data, { outputEncoding: "StorageBinaryString" });
+  let description_save = LZUTF8.compress(sanitize(description), { outputEncoding: "StorageBinaryString" });
+
+  contract.importAvatar({ addressForOwner: address, incomingAvatarData: to_save, description: description_save, level: incomingLevel, correctWords: incomingCorrectWords })
     .then(result => {
-      console.log(result);
+      //console.log(result);
     });
 }
+
+function moderatorRemoveAvatar(username, avatarIndex) {
+  contract.moderatorRemoveAvatar({ _username: username, _avatarIndex: avatarIndex })
+    .then(result => {
+      //console.log(result);
+    });
+}
+
 function sendDonations(incoming) {
   contract.sendDonations({ _amountInNear: utils.format.parseNearAmount(incoming.toString()) })
     .then(result => {
-      console.log(result);
+      //console.log(result);
     });
 };
+function withdrawRewards() {
+  contract.withdrawRewards()
+    .then(result => {
+      //console.log(result);
+    });
+}
 async function getPublicAvatars() {
   contract.getAvatars({})
     .then(result => {
+      //console.log(result);
       ALL_AVATAR_DATA = result;
+      decompressAvatarData();
       buildMural();
     });
 }
+function decompressAvatarData() {
+  let data_to_save = [];
+  let decompress_descriptions = [];
+  let data_highest_levels = [];
+  let data_correct_word_totals = [];
+  let data_ids = [];
+  let data_addresses = [];
+
+  let new_data_output = [];
+  let new_desc_output = [];
+  let new_highest_levels = [];
+  let new_correct_word_totals = [];
+  let new_ids = [];
+  let new_addresses = [];
+
+  for (var i = 0; i < ALL_AVATAR_DATA.length; i++) {
+    for (var j = 0; j < ALL_AVATAR_DATA[i].datas.length; j++) {
+      new_data_output.push(LZUTF8.decompress(ALL_AVATAR_DATA[i].datas[j], { inputEncoding: "StorageBinaryString" }));
+      new_desc_output.push(LZUTF8.decompress(sanitize(ALL_AVATAR_DATA[i].descriptions[j]), { inputEncoding: "StorageBinaryString" }));
+      new_highest_levels.push(ALL_AVATAR_DATA[i].highestLevels[j]);
+      new_correct_word_totals.push(ALL_AVATAR_DATA[i].correctWordTotals[j]);
+      new_ids.push(ALL_AVATAR_DATA[i].ids[j]);
+      new_addresses.push(ALL_AVATAR_DATA[i].address);
+    }
+  }
+  data_to_save = data_to_save.concat(new_data_output);
+  decompress_descriptions = decompress_descriptions.concat(new_desc_output);
+  data_highest_levels = data_highest_levels.concat(new_highest_levels);
+  data_correct_word_totals = data_correct_word_totals.concat(new_correct_word_totals);
+  data_ids = data_ids.concat(new_ids);
+  data_addresses = data_addresses.concat(new_addresses);
+
+  //console.log(data_to_save);
+  //ALL_AVATAR_DATA.avatarData = data_to_save;
+  DECOMPRESSED_AVATAR_DATA = data_to_save;
+  DECOMPRESSED_AVATAR_DESCRIPTIONS = decompress_descriptions;
+  DECOMPRESSED_NEW_HIGHEST_LEVLES = data_highest_levels;
+  DECOMPRESSED_CORRECT_WORD_TOTALS = data_correct_word_totals;
+  DECOMPRESSED_IDS = data_ids;
+  DECOMPRESSED_ADDRESSES = data_addresses;
+  //ALL_AVATAR_DATA.descriptions = decompress_descriptions;
+};
 async function getAvatars(callback) {
   contract.getAvatars({})
     .then(result => {
+      //console.log(result);
       //console.log("get avatars!");
       //console.log(result);
+      //console.log("all avatars");
+      //console.log(result);
       ALL_AVATAR_DATA = result;
+      decompressAvatarData();
       let wasFound = false;
-
-      for (var k = 0; k < result.addresses.length; k++) {
-        if (result.addresses[k] == wallet._authData.accountId) {
-          //console.log("Found k: " + k);
-          CURRENT_AVATAR_INDEX = k;
-          AVATAR_INDEXES.push(k);
-          wasFound = true;
+      for (var k = 0; k < result.length; k++) {
+        //console.log(result);
+        if (result[k].address == wallet._authData.accountId) {
+          for (var a = 0; a < result[k].ids.length; a++) {
+            //console.log("Found a: " + a);
+            CURRENT_AVATAR_TO_SUBMIT_INDEX = a; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
+            CURRENT_AVATAR_INDEX = convertAvatarIndexToArrayIndex(result[k].ids[a]);
+            AVATAR_INDEXES.push(convertAvatarIndexToArrayIndex(result[k].ids[a]));
+            wasFound = true;
+          }
         }
       }
 
@@ -241,14 +308,59 @@ async function getAvatars(callback) {
     });
 };
 
+function convertDecompressedIndexToUsersArrayIndex(CURRENT_AVATAR_INDEX) {
+  let findThisAvatarsBackendId = "";
+  for (var i = 0; i < DECOMPRESSED_IDS.length; i++) {
+    if (CURRENT_AVATAR_INDEX == i) {
+      findThisAvatarsBackendId = DECOMPRESSED_IDS[i];
+    }
+  }
+
+  for (var j = 0; j < ALL_AVATAR_DATA.length; j++) {
+    if (ALL_AVATAR_DATA[j].address == wallet._authData.accountId) {
+      for (var s = 0; s < ALL_AVATAR_DATA[j].ids.length; s++) {
+        if (findThisAvatarsBackendId == ALL_AVATAR_DATA[j].ids[s]) {
+          return s;
+        }
+      }
+    }
+  }
+}
+
+function convertAvatarIndexToArrayIndex(thisIdOfAvatar) {
+  for (var i = 0; i < DECOMPRESSED_IDS.length; i++) {
+    if (thisIdOfAvatar == DECOMPRESSED_IDS[i]) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+
+function updateLastLevelPlayed(result, isCurrentPlayer) {
+
+  //q("#levels-played").innerHTML = result.previousLevelCompleted;
+  if (isCurrentPlayer) {
+    q("#last_level").innerHTML = result[CURRENT_PLAYER_INDEX].previousLevelCompleted;
+    q("#last_wpm").innerHTML = result[CURRENT_PLAYER_INDEX].previousWpm;
+    q("#last_accuracy").innerHTML = result[CURRENT_PLAYER_INDEX].previousAccuracy;
+
+  } else {
+    q("#last_level").innerHTML = result.previousLevelCompleted;
+    q("#last_wpm").innerHTML = result.previousWpm;
+    q("#last_accuracy").innerHTML = result.previousAccuracy;
+  }
+};
 async function getPlayers() {
   contract.getPlayers({})
     .then(result => {
-      console.log(result);
+      //console.log(result);
       let wasFound = false;
-
-      for (var k = 0; k < result.addresses.length; k++) {
-        if (result.addresses[k] == wallet._authData.accountId) {
+      //console.log(result);
+      ALL_PLAYERS = result;
+      //console.log("palyers");
+      for (var k = 0; k < result.length; k++) {
+        if (result[k].address == wallet._authData.accountId) {
           //console.log("Found k: " + k);
           CURRENT_PLAYER_INDEX = k;
           wasFound = true;
@@ -256,13 +368,22 @@ async function getPlayers() {
       }
 
       if (wasFound) {
-        q("#highest-level-achieved").innerHTML = result.highestLevelsAchieved[CURRENT_PLAYER_INDEX];
+        //q("#last_level").innerHTML = result[CURRENT_PLAYER_INDEX].previousLevelCompleted;
+        updateLastLevelPlayed(result, true);
+        /*CURRENT_ELIGIBLE_AMOUNT = (ALL_PLAYERS[CURRENT_PLAYER_INDEX].wordCountEligibleForRewards * CURRENT_PAY_RATE);
+        q("#pending-rewards-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";
+        q("#earned-amount-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";*/
       }
       //console.log("get players!");
       //console.log(result);
     });
 };
-
+async function getAvatarMintCount() {
+  contract.getAvatarMintCount({})
+    .then(result => {
+      console.log(result);
+    });
+}
 
 function bootUpGame() {
   q("#game-container").classList.remove("hide");
@@ -345,7 +466,7 @@ function Game() {
 
   this.init = function (words, callback) {
     WORDS_TO_USE = words;
-    q("#notification").innerHTML = "get ready..."
+    q("#notification").innerHTML = "Get ready..."
     that.getLevelWords(function () {
       q("#game-start-lost-overlay").classList.add("hide");
       q("#notification").classList.add("hide");
@@ -353,11 +474,13 @@ function Game() {
       if (width < 500) { WIDTH_FOR_ITEMS = 250; }
 
       if (LEVEL == 1) { size = 5; }
-      else if (LEVEL == 2) { size = 10; }
-      else if (LEVEL == 3) { size = 15; }
-      else if (LEVEL == 4) { size = 20; }
-      else if (LEVEL >= 5) { size = 25; }
-      q("#level").innerHTML = (LEVEL > 6 ? "expert" : LEVEL);
+      else if (LEVEL == 2) { size = 7; }
+      else if (LEVEL == 3) { size = 10; }
+      else if (LEVEL == 4) { size = 15; }
+      else if (LEVEL == 5) { size = 20; }
+      else if (LEVEL >= 6) { size = 25; }
+
+      q("#level").innerHTML = (LEVEL >= 12 ? "expert" : LEVEL);
       //CUMULATIVE_SIZE += CORRECT_COUNT;
 
       let builder = "";
@@ -456,6 +579,7 @@ function Game() {
           CURRENT_WPM = ((CORRECT_COUNT + WRONG_COUNT) / (total_elapsed_seconds / 60)).toFixed(2);
           q("#accuracy").innerHTML = ((CORRECT_CHARACTER_COUNT / (WRONG_CHARACTER_COUNT + CORRECT_CHARACTER_COUNT)) * 100).toFixed(0) + "%";
           CURRENT_ACCURACY = ((CORRECT_CHARACTER_COUNT / (WRONG_CHARACTER_COUNT + CORRECT_CHARACTER_COUNT)) * 100).toFixed(0);
+          that.unhideStats();
         }
       }
     }
@@ -469,47 +593,62 @@ function Game() {
       }
     }
   }
+  this.unhideStats = function () {
+    //q("#levels-played").parentElement.classList.remove("hide");
+    q("#level").parentElement.classList.remove("hide");
+    q("#wpm").parentElement.classList.remove("hide");
+    q("#accuracy").parentElement.classList.remove("hide");
+  };
   this.setAnimationByLevel = function () {
     let current_selected_word = q("#words");
-
     if (LEVEL == 1) {
-      size = 5;
+      current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 8s linear infinite";
+      current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
+      CURRENT_VELOCITY = 8;
+    } else if (LEVEL == 2) {
       current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 7s linear infinite";
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
       CURRENT_VELOCITY = 7;
-    }
-    else if (LEVEL == 2) {
+    } else if (LEVEL == 3) {
       current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 6s linear infinite";
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
       CURRENT_VELOCITY = 6;
-    }
-    else if (LEVEL == 3) {
-      size = 15;
+    } else if (LEVEL == 4) {
       current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 5s linear infinite";
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
       CURRENT_VELOCITY = 5;
-    }
-    else if (LEVEL == 4) {
-      size = 20;
+    } else if (LEVEL == 5) {
+      current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 4.5s linear infinite";
+      current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
+      CURRENT_VELOCITY = 4.5;
+    } else if (LEVEL == 6) {
       current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 4s linear infinite";
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
       CURRENT_VELOCITY = 4;
-    }
-    else if (LEVEL == 5) {
-      size = 25;
+    } else if (LEVEL == 7) {
+      current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 3.5s linear infinite";
+      current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
+      CURRENT_VELOCITY = 3.5;
+    } else if (LEVEL == 8) {
       current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 3s linear infinite";
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
       CURRENT_VELOCITY = 3;
-    } else if (LEVEL == 6) {
-      size = 25;
+    } else if (LEVEL == 9) {
+      current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 2.5s linear infinite";
+      current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
+      CURRENT_VELOCITY = 2.5;
+    } else if (LEVEL == 10) {
       current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 2s linear infinite";
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
-      CURRENT_VELOCITY = 3;
-    } else if (LEVEL > 6) {
-      size = 25;
+      CURRENT_VELOCITY = 2;
+    } else if (LEVEL == 11) {
+      current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 1.5s linear infinite";
+      current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
+      CURRENT_VELOCITY = 1.5;
+    } else if (LEVEL >= 12) {
       current_selected_word.childNodes[this_word_index].style.animation = "MoveUpDown 1s linear infinite";
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
-      CURRENT_VELOCITY = 3;
+      CURRENT_VELOCITY = 1;
     }
     CURRENT_VELOCITY = Y_MAX_HEIGHT / CURRENT_VELOCITY; // From css MoveUpDown pixels
   };
@@ -560,20 +699,16 @@ function Game() {
     game_running = false;
     q("#game-start-lost-overlay").classList.remove("hide");
     q("#notification").classList.remove("hide");
-    q("#notification").innerHTML = 'game over, saving game results to the blockchain...';
+    q("#notification").innerHTML = 'Game over...';
     q("#words").classList.add("hide");
     q("#words").childNodes[this_word_index].classList.add("hide");
-    that.submitLastLevelPlayed(function (result) {
-      q("#notification").innerHTML = "click to start a new game";
-      that.updateLastLevelPlayed(result);
-    });
+    // that.submitLastLevelPlayed(function (result) {
+    q("#notification").innerHTML = "Click to start a new game";
+    //that.updateLastLevelPlayed(result);
+    // });
+    IN_CURRENT_GAME = false;
   };
-  this.updateLastLevelPlayed = function (result) {
-    q("#levels-played").innerHTML = result.levelCount;
-    q("#last_level").innerHTML = result.level;
-    q("#last_wpm").innerHTML = result.wpm;
-    q("#last_accuracy").innerHTML = result.accuracy;
-  };
+
   this.saveGameAndClaimWatcher = function () {
     /* q("#save-game-results-and-claim").addEventListener('click', function () {
        //console.log("Save");
@@ -582,14 +717,25 @@ function Game() {
   }
   this.submitLastLevelPlayed = async function (callback) {
     //console.log("Submitting correct count: " + CORRECT_COUNT);
-    contract.submitLastLevelPlayed({ level: parseInt(LEVEL), wpm: String(CURRENT_WPM), accuracy: String(CURRENT_ACCURACY), wordsToSubmit: THIS_LEVEL_WORD_INDEXES, correctCount: CORRECT_COUNT, _avatarIndex: parseInt(CURRENT_AVATAR_INDEX) })
+    //console.log("Submitting these words");
+    //console.log(THIS_LEVEL_WORD_INDEXES);
+
+    // MUST SUBMIT THE AVATAR INDEX OF THIS PARTICULAR USER IN THIER ARRAY.
+
+    contract.submitLastLevelPlayed({
+      level: parseInt(LEVEL), wpm: parseInt(CURRENT_WPM), accuracy: parseInt(CURRENT_ACCURACY), wordsToSubmit: THIS_LEVEL_WORD_INDEXES
+      , correctCount: CORRECT_COUNT, _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX)
+    })
       .then(result => {
         //console.log("last level saved");
         //console.log(result);
-        ALL_AVATAR_DATA.avatarsCorrectWords[CURRENT_AVATAR_INDEX] = ALL_AVATAR_DATA.avatarsCorrectWords[CURRENT_AVATAR_INDEX] + CORRECT_COUNT;
-        if (parseInt(LEVEL) > ALL_AVATAR_DATA.avatarsLevels[CURRENT_AVATAR_INDEX]) {
-          ALL_AVATAR_DATA.avatarsLevels[CURRENT_AVATAR_INDEX] = parseInt(LEVEL);
+        //console.log(result);
+        DECOMPRESSED_CORRECT_WORD_TOTALS[CURRENT_AVATAR_INDEX] = parseInt(DECOMPRESSED_CORRECT_WORD_TOTALS[CURRENT_AVATAR_INDEX]) + parseInt(CORRECT_COUNT);
+        if (parseInt(LEVEL) > DECOMPRESSED_NEW_HIGHEST_LEVLES[CURRENT_AVATAR_INDEX]) {
+          DECOMPRESSED_NEW_HIGHEST_LEVLES[CURRENT_AVATAR_INDEX] = parseInt(LEVEL);
         }
+        //CURRENT_ELIGIBLE_AMOUNT += (CORRECT_COUNT * CURRENT_PAY_RATE);
+
         buildMural();
         callback(result);
       });
@@ -598,9 +744,12 @@ function Game() {
   this.getLevelWords = async function (callback) {
     contract.getLevelWords({ level: LEVEL })
       .then(result => {
+        // console.log("level words");
+        //console.log(result);
         //console.log("word chain received!");
         //console.log(result);
         THIS_LEVEL_WORD_INDEXES = result;
+        //console.log(THIS_LEVEL_WORD_INDEXES);
         callback()
       });
   };
@@ -634,13 +783,13 @@ function Game() {
       });
   };
 
-  this.setWordList = async function (incomingWordsIpfsLocation) {
-    contract.setWordList({ wordsIpfsLocation: "QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i" })
-      .then(result => {
-        //console.log("word list ipfs location saved to contract!");
-        //console.log(result);
-      });
-  };
+  /*  this.setWordList = async function (incomingWordsIpfsLocation) {
+      contract.setWordList({ wordsIpfsLocation: "QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i" })
+        .then(result => {
+          //console.log("word list ipfs location saved to contract!");
+          //console.log(result);
+        });
+    };*/
   /*this.checkPayEligibleWordsForToday = async function() {
     contract.checkPayEligibleWordsForToday({ })
       .then(result => {
@@ -653,15 +802,17 @@ function Game() {
   };*/
 
   this.fullInitialize = async function () {
-    that.setWordList();
-    that.initializePlayers();
-    that.initializeAvatarMinting();
+
+    //that.setWordList();
+    //that.initializePlayers();
+    // that.initializeAvatarMinting();
   };
 
-  this.initializePlayers = async function () {
-    contract.initializePlayers({})
+  this.initContract = async function () {
+    contract.initContract({ wordsList: "QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i", mintCount: 0 })
       .then(result => {
         //console.log("initialize players!");
+        //console.log(result);
         //console.log(result);
       });
   };
@@ -695,7 +846,7 @@ function Game() {
     });
   };*/
 
-  this.getThisPlayerWordCountEligibleForRewards = async function () {
+  /*this.getThisPlayerWordCountEligibleForRewards = async function () {
     contract.getThisPlayerWordCountEligibleForRewards({})
       .then(result => {
         //console.log("checking this player wrod count eligible for rewards!");
@@ -709,7 +860,7 @@ function Game() {
         //console.log("intiialize avatar minting");
         //console.log(result);
       });
-  };
+  };*/
 
   this.saveGameResultToChain = async function () {
     try {
@@ -750,9 +901,11 @@ function Game() {
     if (!GAME_LOST) {
       q("#game-start-lost-overlay").classList.remove("hide");
       q("#notification").classList.remove("hide");
-      q("#notification").innerHTML = "saving to blockchain, loading level " + (game.getLevel() + 1) + "...";
+      q("#notification").innerHTML = "Saving to blockchain, loading level " + (game.getLevel() + 1) + "...";
       that.submitLastLevelPlayed(function (result) {
-        that.updateLastLevelPlayed(result);
+        //console.log("last level played submit");
+        //console.log(result);
+        updateLastLevelPlayed(result, false);
         //that.getThisPlayerRewardsToClaim(function(){
         // that.getAndSetCurrentEligibleWordsForToday();
         LEVEL++;
@@ -797,7 +950,12 @@ function Game() {
             current_selected_word.classList.add("correct");
             current_selected_word.classList.add("hide");
             CORRECT_COUNT++;
-            //q("#rewards-pending").innerHTML = ((CURRENT_RATE * CORRECT_COUNT )/ 1000000).toFixed(5) + " N";
+            let clear_sound = new Audio('audio/clear.mp3');
+            clear_sound.play();
+            //CURRENT_ELIGIBLE_AMOUNT += CURRENT_PAY_RATE;
+            //q("#pending-rewards-total").classList.remove("hide");
+            //q("#pending-rewards-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";
+            //q("#earned-amount-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";
             current_completed_string = [];
           } else {
             for (var char = 0; char < current_completed_string.length; char++) {
@@ -935,7 +1093,7 @@ function startGame() {
   game.getWordsList(function () {
     //game.getThisPlayerRewardsToClaim(function () { });
     q("#game-container").classList.remove("hide");
-    q("#notification").innerHTML = "click to start";
+    q("#notification").innerHTML = "Click to start";
     //game.getAndSetCurrentEligibleWordsForToday();
     watchLauncher();
 
@@ -944,9 +1102,10 @@ function startGame() {
 
 function watchLauncher() {
   q("#game-start-lost-overlay").addEventListener('click', function () {
-    if (!IS_FETCHING_WORDS) {
+    if (!IS_FETCHING_WORDS && !IN_CURRENT_GAME) {
       IS_FETCHING_WORDS = true;
-      q("#notification").innerHTML = "loading level 1 from smart contract...";
+      IN_CURRENT_GAME = true;
+      q("#notification").innerHTML = "Loading level 1 from smart contract...";
       if (game.isGameOver()) {
         game.resetGameOver();
       } else {
@@ -963,7 +1122,7 @@ function watchLauncher() {
   });
 };
 function displayCurrentGameAvatar() {
-  let splitAvatarData = ALL_AVATAR_DATA.avatarData[CURRENT_AVATAR_INDEX].split(",");
+  let splitAvatarData = DECOMPRESSED_AVATAR_DATA[CURRENT_AVATAR_INDEX].split(",");
   for (var s = 0; s < splitAvatarData.length; s++) {
     if (splitAvatarData[s] == "") { }
     else {
@@ -982,8 +1141,12 @@ function generateCurrentAvatar() {
 
   for (var j = 0; j < AVATAR_INDEXES.length; j++) {
     //console.log("shipping: " + AVATAR_INDEXES[j]);
+    //for (var check = 0; check < DECOMPRESSED_IDS.length; check++){
     let is_selected_index = CURRENT_AVATAR_INDEX == AVATAR_INDEXES[j];
+    //if (AVATAR_INDEXES[j] == DECOMPRESSED_IDS[check]) {
     q("#all-account-avatars").innerHTML += buildAvatarCanvas(AVATAR_INDEXES[j], is_selected_index);
+    //}
+    //}
   }
   if (AVATAR_INDEXES.length > 0) {
     q("#update-avatar-description").classList.remove("hide");
@@ -999,7 +1162,10 @@ function watchAvatarSelection() {
         }
         e.target.parentElement.classList.add("selected-avatar");
         q("#update-avatar-description").value = e.target.innerHTML;
-        CURRENT_AVATAR_INDEX = e.target.parentElement.dataset.index;
+        CURRENT_AVATAR_INDEX = e.target.parentElement.dataset.index; // EXTRACTED INDEXES FOR THE FRONTEND!
+
+        CURRENT_AVATAR_TO_SUBMIT_INDEX = convertDecompressedIndexToUsersArrayIndex(CURRENT_AVATAR_INDEX);
+
         q("#current-avatar-canvas").innerHTML = "";
         setTimeout(function () {
           displayCurrentGameAvatar();
@@ -1010,7 +1176,7 @@ function watchAvatarSelection() {
 };
 
 function buildAvatarCanvas(index, is_selected_index) {
-  let splitAvatarData = ALL_AVATAR_DATA.avatarData[index].split(",");
+  let splitAvatarData = DECOMPRESSED_AVATAR_DATA[index].split(",");
   for (var s = 0; s < splitAvatarData.length; s++) {
     if (splitAvatarData[s] == "") { }
     else {
@@ -1021,8 +1187,9 @@ function buildAvatarCanvas(index, is_selected_index) {
   for (var i = 0; i < 64; i++) {
     builder += '<div class="md-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
   }
-  builder += '</div><div class="avatar-box"><div class="truncate"><span>L</span><span class="rank-levels">' + ALL_AVATAR_DATA.avatarsLevels[index] + '</span></div><div class="truncate"><span>W</span><span class="rank-words">' + ALL_AVATAR_DATA.avatarsCorrectWords[index] + '</span></div><div class="truncate">' + ALL_AVATAR_DATA.addresses[index].split(NEAR_NETWORK_NAME)[0] + '</div></div>';
-  builder += '<div class="descriptions">' + ALL_AVATAR_DATA.descriptions[index] + '</div>';
+  builder += '</div><div class="avatar-box"><span class="rank-levels">' + DECOMPRESSED_NEW_HIGHEST_LEVLES[index] + '.</span><span class="rank-words">' + DECOMPRESSED_CORRECT_WORD_TOTALS[index] + '</span><span class="mint-ids">' + DECOMPRESSED_IDS[index] + '</span><div class="truncate">' + DECOMPRESSED_ADDRESSES[index].split(NEAR_NETWORK_NAME)[0] + '</div></div>';
+
+  builder += '<div class="descriptions">' + DECOMPRESSED_AVATAR_DESCRIPTIONS[index] + '</div>';
   builder += '</div>';
 
   return builder;
@@ -1105,7 +1272,10 @@ function watchDonationButton() {
 };
 
 async function mintAvatar() {
-  let result = await contract.mintAvatar({ incomingAvatarData: convertToHex(PIXELS_TO_SUBMIT_FOR_AVATAR).toString(), description: q("#new-avatar-description").value }, 300000000000000, utils.format.parseNearAmount("1"));
+  let pixels_to_hex = convertToHex(PIXELS_TO_SUBMIT_FOR_AVATAR).toString();
+  var to_save_data = LZUTF8.compress(pixels_to_hex, { outputEncoding: "StorageBinaryString" });
+  let description_save = LZUTF8.compress(sanitize(q("#new-avatar-description").value), { outputEncoding: "StorageBinaryString" });
+  let result = await contract.mintAvatar({ incomingAvatarData: to_save_data.toString(), description: description_save.toString() }, GAS_TO_ATTACH, utils.format.parseNearAmount("3"));
   //console.log(result);
 };
 
@@ -1124,6 +1294,10 @@ function watchMuralSorting() {
     q("#words-sort").addEventListener("click", function () {
       rankSorting(".rank-words");
     });
+    q("#mint-ids-sort").addEventListener("click", function () {
+      //console.log("click");
+      rankSorting(".mint-ids");
+    });
   }
 };
 
@@ -1141,7 +1315,11 @@ function rankSorting(sort_by) {
     //console.log(a_current_percents);
     var aord = a_current_percents.innerHTML;
     var bord = b_current_percents.innerHTML;
-    return bord - aord;
+    if (sort_by == ".mint-ids") {
+      return aord - bord;
+    } else {
+      return bord - aord;
+    }
   });
 
   var parent = q("#mural");
@@ -1152,23 +1330,44 @@ function rankSorting(sort_by) {
   }
   //}
 }
+function sanitize(string) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    "/": '&#x2F;',
+  };
+  const reg = /[&<>"'/]/ig;
+  return string.replace(reg, (match) => (map[match]));
+}
 
 function updateDescriptionWatcher() {
+
   q("#update-description").addEventListener("click", function () {
     if (!IS_UPDATING_DESCRIPTION) {
       q("#update-description").innerHTML = "updating...";
       IS_UPDATING_DESCRIPTION = true;
-      contract.updateAvatarDescription({ _avatarIndex: parseInt(CURRENT_AVATAR_INDEX), _description: q("#update-avatar-description").value })
+      let new_description_save = LZUTF8.compress(sanitize(q("#update-avatar-description").value), { outputEncoding: "StorageBinaryString" });
+
+      contract.updateAvatarDescription({ _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX), _description: new_description_save })
         .then(result => {
+
           q("#update-description").innerHTML = "updated";
-          ALL_AVATAR_DATA.descriptions[CURRENT_AVATAR_INDEX] = q("#update-avatar-description").value;
+
+          DECOMPRESSED_AVATAR_DESCRIPTIONS[CURRENT_AVATAR_INDEX] = sanitize(q("#update-avatar-description").value);
+          //NEED TO FIX
+
+          //ALL_AVATAR_DATA.descriptions[CURRENT_AVATAR_INDEX] = new_description_save;
           setTimeout(function () {
-            q("#update-description").innerHTML = "update description";
+            q("#update-description").innerHTML = "Update description";
             IS_UPDATING_DESCRIPTION = false;
+            buildMural();
             generateCurrentAvatar();
             watchAvatarSelection();
-          }, 1000);
-          console.log(result);
+          }, 100);
+          //console.log(result);
         });
     }
   });
