@@ -93,6 +93,10 @@ export class Player {
     this.rewards = u128.from("0");
   };
 
+  reduceRewards(_new_subtraction: u128): void {
+    this.rewards = u128.sub(this.rewards, _new_subtraction)
+  }
+
   increaseRewards(_new_rewards: u128): void {
     this.rewards = u128.add(this.rewards, _new_rewards);
   };
@@ -157,31 +161,30 @@ export class RewardsForUser {
 }
 
 export class GameRewardsState {
-  minimumBalance: u128;
   payRate: u128;
   minimumWithdrawalAmount: u128;
   withdrawalFee: u128;
   currentEligibleRewards: u128;
   marketRoyalty: u128;
+  avatarPrice: u128;
 
-  constructor(_minimum_balance: u128, _pay_rate: u128, _minimum_withdrawal_amount: u128, _withdrawal_fee: u128) {
-    this.minimumBalance = _minimum_balance;
+  constructor(_pay_rate: u128, _minimum_withdrawal_amount: u128, _withdrawal_fee: u128) {
     this.payRate = _pay_rate;
     this.minimumWithdrawalAmount = _minimum_withdrawal_amount;
     this.withdrawalFee = _withdrawal_fee;
     this.currentEligibleRewards = u128.from("0");
     this.marketRoyalty = u128.from("50000000000000000000000");
+    this.avatarPrice = u128.from("3000000000000000000000000");
   }
 
-  updateRewardsState(_minimum_balance: u128, _pay_rate: u128, _minimum_withdrawal_amount: u128, _withdrawal_fee: u128): void {
-    this.minimumBalance = _minimum_balance;
+  updateRewardsState(_pay_rate: u128, _minimum_withdrawal_amount: u128, _withdrawal_fee: u128): void {
     this.payRate = _pay_rate;
     this.minimumWithdrawalAmount = _minimum_withdrawal_amount;
     this.withdrawalFee = _withdrawal_fee;
   }
 
-  increaseEligibleRewards(_new_addition_of_eligible_words: u128): void {
-    this.currentEligibleRewards = u128.add(this.currentEligibleRewards, _new_addition_of_eligible_words);
+  increaseEligibleRewards(_new_addition_of_eligible_rewards: u128): void {
+    this.currentEligibleRewards = u128.add(this.currentEligibleRewards, _new_addition_of_eligible_rewards);
   }
 
   reduceEligibleRewards(_amount_to_reduce: u128): void {
@@ -199,4 +202,18 @@ export class GameRewardsState {
   setWithdrawalFee(_withdrawal_fee: u128): void {
     this.withdrawalFee = _withdrawal_fee;
   }
+
+  setAvatarPrice(_price: u128): void {
+    this.avatarPrice = _price;
+  }
+}
+
+export class GetBalanceArgs {
+  account_id: string;
+}
+
+export class FtTransferArgs {
+  receiver_id: string;
+  amount: string;
+  memo: string
 }

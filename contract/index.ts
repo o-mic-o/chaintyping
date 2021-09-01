@@ -1,22 +1,31 @@
 // @nearfile
 
-import { env, context, logging, storage, RNG, u128, ContractPromiseBatch, PersistentUnorderedMap, PersistentMap } from 'near-sdk-as';
-import { Player, ChainAvatarsForUser, Game, OrderForUser, RewardsForUser, GameRewardsState } from './model';
+import { env, context, logging, storage, RNG, u128, ContractPromiseBatch, PersistentUnorderedMap } from 'near-sdk-as';
+import { Player, ChainAvatarsForUser, Game, OrderForUser, RewardsForUser, GameRewardsState, GetBalanceArgs, FtTransferArgs } from './model';
 
 const OWN = "mic.testnet";
 const DAO = "chaintyping-test2.sputnikv2.testnet";
-const PRICE = u128.from("3000000000000000000000000");
-const MAX_AVATARS = <u32>100;
+const XGC_CONTRACT = "testing12345.testnet";
+const BASIC_GAS = 5000000000000;
+const TRANSFER_GAS = 70000000000000;
+//const PRICE = u128.from("3000000000000000000000000");
+const MAX_AVATARS = <u32>50;
 const MAX_WPM = 300;
 const MAX_ACCURACY = 100;
 const MAX_DESC = 120;
-const ROYALTY = 0.03; // 3% royalty
+//const ROYALTY = 0.03; // 3% royalty
+const MININMUM_WITHDRAWAL_AMOUNT = u128.from("1000");
+const PAY_RATE = u128.from("100");
+const WITHDRAWAL_FEE = u128.from("1000");
 
 const avatars = new PersistentUnorderedMap<string, ChainAvatarsForUser>("a");
 const players = new PersistentUnorderedMap<string, Player>("p");
+
 const orders = new PersistentUnorderedMap<string, Array<OrderForUser>>("o");
 const userRewards = new PersistentUnorderedMap<string, RewardsForUser>("r");
 const gameRewardsState = new PersistentUnorderedMap<string, GameRewardsState>("g");
+
+const ACTION_FEE = u128.from("1000"); //XGC
 
 export function getPlayers(): Array<Player> { return players.values(); };
 export function getAvatars(): Array<ChainAvatarsForUser> { return avatars.values(); };
@@ -45,7 +54,6 @@ export function setWordList(wordsIpfsLocation: string): void { // Must Run first
     game.updateWordsList(wordsIpfsLocation);
   }
 };
-
 export function setWithdrawalFee(_fee: string): void {
   assert(context.predecessor == OWN, "Must be owner.");
   let reward_state = gameRewardsState.get("gameRewardsState");
@@ -70,6 +78,44 @@ export function setPayRate(_pay_rate: string): void {
     reward_state.setPayRate(u128.from(_pay_rate));
     gameRewardsState.set("gameRewardsState", reward_state);
   }
+
+}
+export function checkXGCBalance(): void {
+  xcc_check_balance(context.predecessor);
+};
+
+export function getXGCTotalSupply(): void {
+  const promise = ContractPromiseBatch.create(XGC_CONTRACT)
+
+  promise.function_call(
+    'ft_total_supply',
+    '',
+    u128.Zero,
+    BASIC_GAS
+  )
+
+  env.promise_return(promise.id)
+};
+
+export function checkThisContractBalanceXGC(): void {
+  xcc_check_balance(context.contractName);
+
+}
+function xcc_check_balance(account_to_check: string): void {
+  let account_id = account_to_check;
+  let args: GetBalanceArgs = { account_id };
+
+  const promise = ContractPromiseBatch.create(XGC_CONTRACT)
+
+  // then we add the FunctionCall action to this promise (we could add any one of the other 8 supported actions here, by the way)
+  promise.function_call(
+    'ft_balance_of',                     // target contract method name
+    args.encode(),                // target contract method arguments
+    u128.Zero,                         // deposit attached to the call
+    BASIC_GAS                          // gas attached to the call
+  )
+
+  env.promise_return(promise.id)
 }
 
 export function modifyRewardStates(_minimum_balance: string, _pay_rate: string, _minimum_withdrawal_amount: string, _withdrawal_fee: string): void {
@@ -77,24 +123,40 @@ export function modifyRewardStates(_minimum_balance: string, _pay_rate: string, 
 
   let reward_state = gameRewardsState.get("gameRewardsState");
   if (reward_state == null) {
-    let MINIMUM_BALANCE = u128.from("25000000000000000000000000");
-    let PAY_RATE = u128.from("20000000000000000000");
-    let MININMUM_WITHDRAWAL_AMOUNT = u128.from("1000000000000000000000");
-    let WITHDRAWAL_FEE = u128.from("10000000000000000000000");
-    gameRewardsState.set("gameRewardsState", new GameRewardsState(MINIMUM_BALANCE, PAY_RATE, MININMUM_WITHDRAWAL_AMOUNT, WITHDRAWAL_FEE));
+
+    gameRewardsState.set("gameRewardsState", new GameRewardsState(PAY_RATE, MININMUM_WITHDRAWAL_AMOUNT, WITHDRAWAL_FEE));
   } else {
-    reward_state.updateRewardsState(u128.from(_minimum_balance), u128.from(_pay_rate), u128.from(_minimum_withdrawal_amount), u128.from(_withdrawal_fee));
+    reward_state.updateRewardsState(u128.from(_pay_rate), u128.from(_minimum_withdrawal_amount), u128.from(_withdrawal_fee));
     gameRewardsState.set("gameRewardsState", reward_state);
   }
 }
 
-export function depositForRewards(): void {
-  let value = context.attachedDeposit;
+export function depositForRewards(value: string): void {
+  assert(context.predecessor == OWN, "Only owner may replenish deposits for game.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   assert(reward_state != null, "Reward state was null.");
   if (reward_state != null) {
-    reward_state.increaseEligibleRewards(value);
+    reward_state.increaseEligibleRewards(u128.from(value));
     gameRewardsState.set("gameRewardsState", reward_state);
+  }
+};
+
+export function reduceEligibleRewards(value: string): void {
+  assert(context.predecessor == OWN, "Only owner may reduce availibility for game.");
+  let reward_state = gameRewardsState.get("gameRewardsState");
+  assert(reward_state != null, "Reward state was null.");
+  if (reward_state != null) {
+    reward_state.reduceEligibleRewards(u128.from(value));
+    gameRewardsState.set("gameRewardsState", reward_state);
+  }
+
+}
+
+export function resetRewardState(): void {
+  assert(context.predecessor == OWN, "Only owner may reset reward state");
+  let reward_state = gameRewardsState.get("gameRewardsState");
+  if (reward_state != null) {
+    gameRewardsState.set("gameRewardsState", new GameRewardsState(PAY_RATE, MININMUM_WITHDRAWAL_AMOUNT, WITHDRAWAL_FEE));
   }
 };
 
@@ -113,10 +175,31 @@ export function withdrawRewards(): void {
       thisPlayer.resetRewardsAfterWithdrawal();
       players.set(context.predecessor, thisPlayer);
 
-      ContractPromiseBatch.create(context.predecessor).transfer(amountToWithdraw);
+      xcc_transfer_ft_to(amountToWithdraw.toString(), "chaintyping");
+      //ContractPromiseBatch.create(context.predecessor).transfer(amountToWithdraw);
     }
   }
 };
+
+function xcc_transfer_ft_to(_amount: string, _memo: string): void {
+  let receiver_id = context.predecessor;
+  let amount = _amount;
+  let memo = _memo;
+  let args: FtTransferArgs = { receiver_id, amount, memo };
+
+  const promise = ContractPromiseBatch.create(XGC_CONTRACT)
+
+  // then we add the FunctionCall action to this promise (we could add any one of the other 8 supported actions here, by the way)
+  promise.function_call(
+    'ft_transfer',                     // target contract method name
+    args.encode(),                // target contract method arguments
+    u128.Zero,                         // deposit attached to the call
+    TRANSFER_GAS                          // gas attached to the call
+  )
+
+  env.promise_return(promise.id)
+}
+
 
 export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32): boolean {
   assert(context.predecessor == OWN, "Must be owner to moderate and remove avatar from user.");
@@ -124,6 +207,7 @@ export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32): boo
   if (getSpecificAvatarsOfUser != null) {
     getSpecificAvatarsOfUser.removeThisAvatar(_avatarIndex);
     avatars.set(_username, getSpecificAvatarsOfUser);
+
     let game = storage.get<Game>("game");
     if (game != null) {
       game.decreaseAvatarMintCount();
@@ -135,15 +219,45 @@ export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32): boo
   }
 };
 
+export function moderatorRemoveListing(_username: string, _avatarId: u32): void {
+  assert(context.predecessor == OWN, "Must be owner to moderate and remove listings from user.");
+
+  let theseOrders = orders.get(_username);
+  if (theseOrders == null) {
+    assert(theseOrders != null, "There are no orders for this user to update.");
+  } else {
+    for (var i = 0; i < theseOrders.length; i++) {
+      logging.log("One order with id: " + theseOrders[i].avatarId.toString());
+      if (theseOrders[i].avatarId == _avatarId) {
+        logging.log("Splicing this order");
+        theseOrders.splice(i, 1);
+        orders.set(_username, theseOrders);
+        break;
+      }
+    }
+  }
+};
+export function setAvatarPrice(_price: string): void {
+  assert(context.predecessor == OWN, "Must be owner to moderate and remove avatar from user.");
+  let game_rewards_state = gameRewardsState.get("gameRewardsState");
+  if (game_rewards_state != null) {
+    game_rewards_state.setAvatarPrice(u128.from(_price));
+    gameRewardsState.set("gameRewardsState", game_rewards_state);
+  }
+}
 export function mintAvatar(incomingAvatarData: string, description: string): void {
+  let game_rewards_state = gameRewardsState.get("gameRewardsState");
+  assert(game_rewards_state != null, "Game rewards state was null.");
 
   assert(<i32>description.length < MAX_DESC, "Description max size");
-  let value = context.attachedDeposit;
-  assert(value >= PRICE, "Price mismatch.");
 
   let game = storage.get<Game>("game");
 
   if (game != null) {
+    let value = context.attachedDeposit;
+    let price = u128.from("3000000000000000000000000");
+    assert(value >= price, "Price mismatch.");
+
     assert(game.avatarMintCount + 1 <= MAX_AVATARS, "Max avatar count reached.");
     let tryMyAvatars = avatars.get(context.predecessor);
 
@@ -189,13 +303,10 @@ export function getLevelWords(level: u32): Array<u32> {
     size = 7;
   } else if (level == 3) {
     size = 10;
-  } else if (level == 4) {
+  } else if (level >= 4) {
     size = 15;
-  } else if (level == 5) {
-    size = 20;
-  } else if (level >= 6) {
-    size = 25;
   }
+
   for (let i = 0; i < size; i++) {
     resultList[i] = rng.next();
   }
@@ -285,9 +396,17 @@ export function sendDonations(_amountInNear: u128): void {
 export function updateAvatarDescription(_avatarIndex: u32, _description: string): void {
   assert(<i32>_description.length < MAX_DESC, "d")
   let myAvatars = avatars.get(context.predecessor);
-  if (myAvatars != null) {
-    myAvatars.updateDescription(_avatarIndex, _description);
-    avatars.set(context.predecessor, myAvatars);
+  let myPlayer = players.get(context.predecessor);
+  if (myPlayer != null) {
+    assert(myPlayer.rewards >= ACTION_FEE, "Must satisfy the fee of 1 XGC.");
+    if (myPlayer.rewards >= ACTION_FEE) {
+      myPlayer.reduceRewards(ACTION_FEE);
+      if (myAvatars != null) {
+        myAvatars.updateDescription(_avatarIndex, _description);
+        avatars.set(context.predecessor, myAvatars);
+        players.set(context.predecessor, myPlayer);
+      }
+    }
   }
 };
 
@@ -317,12 +436,23 @@ export function setForSale(_avatarId: u32, price: string): void {
     assert(myAvatars.isOwnedByMe(_avatarId), "This is not owned by you.");
   }
 
+  let myPlayer = players.get(context.predecessor);
   let theseOrders = orders.get(context.predecessor);
 
   if (theseOrders == null) {
-    let newOrder = new OrderForUser(_avatarId);
-    newOrder.setItemForSale(u128.from(price));
-    orders.set(context.predecessor, [newOrder]);
+    if (myPlayer != null) {
+      assert(myPlayer.rewards >= ACTION_FEE, "Must satisfy the fee of 1 XGC.");
+      if (myPlayer.rewards >= ACTION_FEE) {
+        myPlayer.reduceRewards(ACTION_FEE);
+        players.set(context.predecessor, myPlayer);
+
+        let newOrder = new OrderForUser(_avatarId);
+        newOrder.setItemForSale(u128.from(price));
+        orders.set(context.predecessor, [newOrder]);
+
+      }
+    }
+
   } else {
     let isFound = false;
     for (var i = 0; i < theseOrders.length; i++) {
@@ -333,10 +463,22 @@ export function setForSale(_avatarId: u32, price: string): void {
     }
 
     if (!isFound) {
-      let newOrderMultiples = new OrderForUser(_avatarId);
-      newOrderMultiples.setItemForSale(u128.from(price));
-      theseOrders.push(newOrderMultiples);
-      orders.set(context.predecessor, theseOrders);
+
+      if (myPlayer != null) {
+        assert(myPlayer.rewards >= ACTION_FEE, "Must satisfy the fee of 1 XGC.");
+        if (myPlayer.rewards >= ACTION_FEE) {
+          myPlayer.reduceRewards(ACTION_FEE);
+          players.set(context.predecessor, myPlayer);
+
+
+          let newOrderMultiples = new OrderForUser(_avatarId);
+          newOrderMultiples.setItemForSale(u128.from(price));
+          theseOrders.push(newOrderMultiples);
+          orders.set(context.predecessor, theseOrders);
+
+        }
+      }
+
     }
   }
 };
@@ -420,7 +562,7 @@ export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32): 
 
           let differenceWithRoyalty = u128.sub(valueDeposited, u128.from(reward_state.marketRoyalty));
           logging.log("Difference with royalty: " + differenceWithRoyalty.toString());
-          let valueToSendToTrueOwner = u128.sub(valueDeposited, differenceWithRoyalty);
+          let valueToSendToTrueOwner = differenceWithRoyalty;
 
           if (myAvatars == null) { // Add new avatar to the new owner.
             if (ownersAvatars != null) {

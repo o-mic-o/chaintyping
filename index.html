@@ -43,20 +43,24 @@
     <div class="main-top-section group">
       <div id="sign-in-button" class="green pointer stats-label stats-label-right">Login with NEAR</div>
       <div id="game-launcher" class="hide stats-label stats-label-right pointer green ">Play Game</div>
-      <!--<div class="stats-label stats-label-right green pointer hide" id="pending-rewards-total"></div>-->
+      <div id="eligible-rewards" class="pointer stats-label stats-label-right purple"></div>
+      <div class="stats-label stats-label-right green pointer hide" id="pending-rewards-total">+ 0 XGC</div>
       <div class="stats-label stats-label-right hide pointer" id="account-id"></div>
       <div id="mural-button" class="stats-label stats-label-right pointer" onclick='muralCall()'>Mural</div>
-      <div id="get-avatar" class="hide pointer stats-label stats-label-right" onclick="getAvatarCall()">Get Chain Avatar
-      </div>
+      <div id="market-button" class="stats-label stats-label-right pointer" onclick='getMarketCall()'>Market</div>
+      <div id="get-avatar" class="hide pointer stats-label stats-label-right" onclick="getAvatarCall()">Mint</div>
       <div id="faq-button" class="pointer stats-label stats-label-right" onclick="getFaqCall()">FAQ</div>
       <div id="player-container">
         <div id="play-pause-one" class="pointer stats-label stats-label-right">Music</div>
       </div>
       <a href="https://v2.sputnik.fund/#/simplegames.sputnik-dao.near" target="_blank">
-        <div id="governance" class="stats-label stats-label-right pointer">Governance</div>
+        <div id="governance" class="stats-label stats-label-right pointer">Gov</div>
       </a>
       <div id="night" class="pointer stats-label stats-label-right">Style</div>
-      <div class="stats-label stats-label-right red pointer hide" id="sign-out-button-two">Logout</div>
+      <div id="xgc-stats-button" class="pointer stats-label stats-label-right"
+        style="padding:6.5px;display:flex;align-items:center;" onclick="getXGCStats()"><img src="favicons/coin.png"
+          style="width:15px;"></div>
+      <div class="stats-label stats-label-right red pointer hide" id="sign-out-button-two">Exit</div>
     </div>
     <div id="faq">
       <div>
@@ -74,7 +78,7 @@
 
           <p>In order to play the game, it's needed to own a <b>Chain Avatar Character</b>. Each Chain Avatar is
             represented on a <b> Mural Leaderboard</b>, of all typing characters.
-            There will only be 100 avatars available to play this early version of the game. These are listed in order
+            There will only be 50 avatars available to play this early version of the game. These are listed in order
             of most words typed correctly. <b>They may be used as a sort of advertising space, to hold a
               description.</b> Donations will go to the game's DAO to fund a version 2 which will be play to earn.<br>
           </p>
@@ -100,8 +104,8 @@
         </div>
       </div>
     </div>
-
   </div>
+
   <div id="my-account-data" class="hide faq-section">
     <div class="flex justify-content-start">
       <div class="flex justify-content-start">
@@ -115,19 +119,38 @@
       <input id="update-avatar-description" class="hide stats-label" style="width:90%;margin:0 5px 0 15px;"
         placeholder="Select an avatar to edit description...">
       <div class="group" style="justify-content: flex-start;">
-        <div class="stats-label pointer hide" id="update-description" style="margin-left:15px;margin-top:15px;">update
-          description</div>
+        <div class="stats-label pointer hide green" id="update-description">Update description for 1 XGC</div>
+      </div>
+    </div>
+    <div id="update-market-list" style="margin-bottom:15px;">
+      <input id="update-market-price-input" type="number" class="hide stats-label"
+        style="width:150px;margin:0 5px 0 15px;" placeholder="NEAR price to ask...">
+      <div class="group" style="justify-content: flex-start;">
+        <div class="stats-label pointer green hide" id="update-market-price">Set asking price for 1 XGC</div>
+        <div class="stats-label pointer red hide" id="remove-this-listing-button"
+          style="margin-left:15px;margin-top:15px;">Remove listing</div>
       </div>
     </div>
 
     <div class="group" style="justify-content: flex-start;">
       <div class="stats-label" id="my-account-link">My characters and stats</div>
-      <div class="account-data-level stats-label ">Previous level <span id="last_level"></span></div>
+      <div class="account-data-level stats-label ">Previous level reached <span id="last_level"></span></div>
       <div class="account-data-wpm stats-label ">WPM <span id="last_wpm"></span></div>
       <div class="account-data-accuracy stats-label">Accuracy <span id="last_accuracy"></span></div>
       <!--<div class="account-data-highest stats-label">Highest level <span id="highest-level-achieved"></span></div>-->
-
     </div>
+  </div>
+  <div id="xgc-stats" class="hide faq-section" style="position:relative;">
+    <h3>XGC Stats</h3>
+    <img src="favicons/coin.png" style="width:50px;margin-top:15px;">
+    <p style="padding-top:15px;">XGC (Game coin) is the Simple Games in-game token which can be used to update
+      descriptions, set avatars on the marketplace, and to earn by typing. There is no IDO, no airdrops, and Simple
+      Games does not take investments of any kind in XGC. It is simply used as a mechanism for play-to-earn
+      functionality.</p>
+    <h3 style="padding-top:15px;" id="xgc-supply"></h3>
+    <h3 style="padding-top:15px;" id="xgc-my-balance"></h3>
+    <h3 style="padding-top:15px;" id="xgc-game-balance"></h3>
+    <h3 style="padding-top:15px;" id="xgc-player-balances"></h3>
   </div>
   <div id="mural-box" class="hide faq-section" style="position:relative;">
     <div id="sorting" class="group" style="justify-content: flex-start;">
@@ -141,6 +164,20 @@
     <div id="mural"></div>
   </div>
 
+  <div id="market-box" class="hide faq-section" style="position:relative;">
+    <div id="sorting" class="group" style="justify-content: flex-start;">
+      <div class="stats-label pointer" id="words-sort-market">Words Rank</div>
+      <div class="stats-label pointer" id="rank-sort-market">Levels Rank</div>
+      <div class="stats-label pointer" id="mint-ids-sort-market">Mint Rank</div>
+      <div class="stats-label pointer" id="price-sort-market">Price</div>
+    </div>
+    <div id="contract-linking" class="group" style="justify-content: flex-start;">
+      <div class="stats-label" id="market-fee-label">0.05 N fixed market fee</div>
+      <div class="stats-label" id="contract-link-market"></div>
+    </div>
+    <div id="market-container"></div>
+  </div>
+
   <div id="game-container" class="game-container hide">
     <div class="game-top">
       <div class="signed-in-flow group hide">
@@ -148,7 +185,8 @@
           <div id="back-to-inner-menu" onclick="displayInnerMenu(true)"
             class="pointer stats-label stats-label-right green">Back to menu</div>
 
-          <!--<div class="stats-label stats-label-right green"><span id="earned-amount-total">0</span></div>-->
+          <div id="earned-rewards-withdrawal" class="stats-label stats-label-right green"><span
+              id="earned-rewards-total"></span></div>
           <div class="stats-label stats-label-right hide"><span id="level"></span></div>
           <div class="stats-label stats-label-right hide"><span id="wpm"></span></div>
           <div class="stats-label stats-label-right hide"><span id="accuracy"></span></div>
@@ -202,84 +240,18 @@
       <div class="pixel pointer"></div>
     </div>
     <div id="avatar-canvas"></div>
+
     <input id="new-avatar-description" class="stats-label" style="width:90%;margin-top:5px;"
       placeholder="Enter public description...">
     <div style="margin-top:5px;" class="group" style="flex-direction: column;">
-      <div id="mint-character-button" class="pointer stats-label stats-label-left green">Donate for 3 N</div>
+      <div id="mint-character-button" class="pointer stats-label stats-label-left green">Donate</div>
     </div>
     <div style="padding:15px 0 0 0;font-size:0.8rem;color:gray;"><b>Note:</b> Sexual, racist or violent drawings are not
       allowed, and will be
       deleted. There are no refunds for donations.</div>
   </div>
-
   <script>
-    document.querySelector("#audio-player").volume = 0.1;
-    function muralCall() {
-      document.querySelector("#faq").classList.add("hide"); document.querySelector("#mural-box").classList.remove("hide");;
-    }
-    function getAvatarCall() {
-      document.querySelector("#choose-avatar").classList.remove("hide"); document.querySelector("#mural-box").classList.add("hide"); document.querySelector("#my-account-data").classList.add("hide");
-    }
-    function getFaqCall() {
-      document.querySelector("#faq").classList.remove("hide"); document.querySelector("#mural-box").classList.add("hide");
-    }
-    muralCall();
-    let muralBtn = document.querySelector("#mural-button");
-
-    muralBtn.addEventListener('click', function () {
-      q("#choose-avatar").classList.add("hide");
-      q("#mural-box").classList.remove("hide");
-      q("#my-account-data").classList.add("hide");
-    })
-    let accountBtn = document.querySelector("#account-id");
-
-    accountBtn.addEventListener('click', function () {
-      q("#choose-avatar").classList.add("hide");
-      q("#mural-box").classList.add("hide");
-      q("#my-account-data").classList.remove("hide");
-    })
-
-    let night = document.querySelector("#night");
-    let body = document.querySelector("body");
-    let nightTwo = document.querySelector("#night-two");
-
-    function setBackground() {
-      if (body.classList.contains("night")) {
-        body.classList.remove("night");
-      } else {
-        body.classList.add("night");
-      }
-    };
-
-    night.addEventListener('click', function () {
-      setBackground();
-    })
-    nightTwo.addEventListener('click', function () {
-      setBackground();
-    });
-    var track = document.getElementById('audio-player');
-
-    var controlBtn = document.getElementById('play-pause-one');
-    var controlBtnTwo = document.getElementById('play-pause');
-
-    function playPause() {
-      if (track.paused) {
-        track.play();
-      } else {
-        track.pause();
-      }
-    }
-
-    controlBtn.addEventListener("click", playPause);
-    controlBtnTwo.addEventListener("click", playPause);
-    track.addEventListener("ended", function () {
-      controlBtn.className = "play";
-    });
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.41.0/dist/near-api-js.min.js"></script>
-  <script id="lzutf8" src="https://cdn.jsdelivr.net/npm/lzutf8/build/production/lzutf8.min.js"></script>
-  <script src="js/main.js"></script>
-  <script>
+    function q(input) { return document.querySelector(input); };
     function cookieProcess() {
       if (getCookie("chaintyping_compliance")) {
         q("#cookie-compliance").remove();
@@ -290,7 +262,6 @@
           setCookie('chaintyping_compliance', 'true', 7);
         });
       }
-
     }
     function setCookie(name, value, days) {
       var expires = "";
@@ -318,7 +289,114 @@
     }
 
     cookieProcess();
+
+    q("#audio-player").volume = 0.1;
+    function muralCall() {
+      window.location.hash = "/";
+      q("#faq").classList.add("hide"); q("#mural-box").classList.remove("hide");;
+      q("#market-box").classList.add("hide");
+      q("#xgc-stats").classList.add("hide");
+    }
+    function getAvatarCall() {
+      window.location.hash = "/mint";
+      q("#choose-avatar").classList.remove("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
+      q("#market-box").classList.add("hide");
+      q("#xgc-stats").classList.add("hide");
+    }
+    function getFaqCall() {
+      window.location.hash = "/faq";
+      q("#faq").classList.remove("hide"); q("#mural-box").classList.add("hide");
+      q("#market-box").classList.add("hide");
+      q("#xgc-stats").classList.add("hide");
+    }
+    function getMarketCall() {
+      window.location.hash = "/market";
+      q("#faq").classList.add("hide");
+      q("#choose-avatar").classList.add("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
+      q("#market-box").classList.remove("hide");
+      q("#xgc-stats").classList.add("hide");
+    }
+    function getXGCStats() {
+      window.location.hash = "/xgc";
+      q("#faq").classList.add("hide");
+      q("#choose-avatar").classList.add("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
+      q("#market-box").classList.add("hide");
+      q("#xgc-stats").classList.remove("hide");
+    }
+    let muralBtn = q("#mural-button");
+
+    muralBtn.addEventListener('click', function () {
+      q("#choose-avatar").classList.add("hide");
+      q("#mural-box").classList.remove("hide");
+      q("#my-account-data").classList.add("hide");
+      q("#xgc-stats").classList.add("hide");
+    })
+    let accountBtn = q("#account-id");
+
+    accountBtn.addEventListener('click', function () {
+      window.location.hash = "/account";
+      q("#choose-avatar").classList.add("hide");
+      q("#mural-box").classList.add("hide");
+      q("#my-account-data").classList.remove("hide");
+      q("#market-box").classList.add("hide");
+      q("#xgc-stats").classList.add("hide");
+    })
+
+    let night = q("#night");
+    let body = q("body");
+    let nightTwo = q("#night-two");
+
+    function setBackground() {
+      if (body.classList.contains("night")) {
+        body.classList.remove("night");
+        setCookie('chaintyping_style', 'false', 7);
+      } else {
+        body.classList.add("night");
+        setCookie('chaintyping_style', 'true', 7);
+      }
+    };
+    function checkStyle() {
+      let styling = getCookie("chaintyping_style");
+      if (styling != null) {
+        if (styling == "true") {
+          body.classList.add("night");
+        } else {
+          body.classList.remove("night");
+        }
+      }
+    }
+    checkStyle();
+    night.addEventListener('click', function () {
+      setBackground();
+    })
+    nightTwo.addEventListener('click', function () {
+      setBackground();
+    });
+    var track = document.getElementById('audio-player');
+
+    var controlBtn = document.getElementById('play-pause-one');
+    var controlBtnTwo = document.getElementById('play-pause');
+
+    function playPause() {
+      if (track.paused) {
+        track.play();
+      } else {
+        track.pause();
+      }
+    }
+
+    controlBtn.addEventListener("click", playPause);
+    controlBtnTwo.addEventListener("click", playPause);
+    track.addEventListener("ended", function () {
+      controlBtn.className = "play";
+    });
+
+
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.41.0/dist/near-api-js.min.js"></script>
+  <script id="lzutf8" src="https://cdn.jsdelivr.net/npm/lzutf8/build/production/lzutf8.min.js"></script>
+  <script src="js/app.js"></script>
+
 </body>
 
 </html>

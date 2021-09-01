@@ -1,29 +1,38 @@
-const CONTRACT = 'chaintyping.simplegames.near'; // LIVE ON TESTNET 'dev-1629758831278-1504897';
-const NEAR_NETWORK_NAME = ".near";
+const CONTRACT = 'dev-1630283610608-7480166'; // LIVE ON TESTNET 'dev-1629758831278-1504897';
+const NEAR_NETWORK_NAME = ".testnet";
+const XGC_CONTRACT = "testing12345.testnet";
 
 let game;
+const XGC_DECIMALS = 1000;
+
 let AVATAR_INDEXES = [];
-let ALL_AVATAR_DATA;
+let ORIGINAL_AVATAR_DATA;
 let PIXELS_TO_SUBMIT_FOR_AVATAR = [];
 let ALL_AVATARS = [];
-let CURRENT_AVATAR_INDEX = "";
+let CURRENT_AVATAR_ID = "";
 let IS_LOCKED = false;
 let IS_UPDATING_DESCRIPTION = false;
 let SET_SORTING_WATCHERS_ONCE = false;
 let CURRENT_PLAYER_INDEX;
 let IN_CURRENT_GAME = false;
-let DECOMPRESSED_AVATAR_DATA = [];
-let DECOMPRESSED_AVATAR_DESCRIPTIONS = [];
-let DECOMPRESSED_NEW_HIGHEST_LEVLES = [];
-let DECOMPRESSED_CORRECT_WORD_TOTALS = [];
-let DECOMPRESSED_IDS = [];
-let DECOMPRESSED_ADDRESSES = [];
+let XGC_DECIMAL_PLACES = 2;
 let CURRENT_AVATAR_TO_SUBMIT_INDEX = ""; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
+let ALL_MARKET_DATA = "";
+let IS_UPDATING_ORDER = false;
+let IS_BUYING_PROGRESS = false;
 
 let ALL_PLAYERS = "";
 let CURRENT_ELIGIBLE_AMOUNT = 0;
-const CURRENT_PAY_RATE = 0.00003;
-const GAS_TO_ATTACH = 100000000000000;
+let CURRENT_PAY_RATE = "";
+const GAS_TO_ATTACH = 70000000000000;
+let GAME_REWARDS_STATE_IN_NEAR = "";
+let IS_WITHDRAWING = false;
+let IS_DISPLAYING_PAYRATE = false;
+let WITHDRAWAL_BUTTON_PROCESSING = false;
+let TIMEOUT_PROCESSING_WORDS_DELAY = 3000;
+let SET_MARKET_SORT_WATCHERS_ONCE = false;
+let HASH_ID = "";
+let ACTION_FEE = 1000;
 
 function q(input) { return document.querySelector(input); };
 function matchingCharArray(word_one, word_two) {
@@ -42,12 +51,13 @@ function matchingCharArray(word_one, word_two) {
   }
 }
 q("#contract-link").innerHTML = CONTRACT;
+q("#contract-link-market").innerHTML = CONTRACT;
 
 const near = new nearApi.Near({
   keyStore: new nearApi.keyStores.BrowserLocalStorageKeyStore(),
-  networkId: 'mainnet',
-  nodeUrl: 'https://rpc.mainnet.near.org',
-  walletUrl: 'https://wallet.mainnet.near.org'
+  networkId: 'testnet',
+  nodeUrl: 'https://rpc.testnet.near.org',
+  walletUrl: 'https://wallet.testnet.near.org'
 });
 
 const { utils } = nearApi
@@ -59,22 +69,52 @@ const contract = new nearApi.Contract(wallet.account(), CONTRACT, { //'dev-16288
     'getWordsList',
     'getPlayers',
     'getAvatars',
-    'getAvatarMintCount'
+    'getOrders',
+    'getAvatarMintCount',
+    'getGameRewardsState',
   ],
   changeMethods: [
     'initContract',
+    'initPlayerRewards',
+
+    'getLevelWords',
+
     'setWordList',
     'mintAvatar',
-    'getLevelWords',
+    'updateLevel',
     'submitLastLevelPlayed',
-    //'getLastLevelPlayed',
     'getThisPlayerAddress',
-    //'getThisPlayerWordsEligibleForRewards',
     'sendDonations',
     'updateAvatarDescription',
     'moderatorRemoveAvatar',
+    'moderatorRemoveListing',
+    'importAvatar',
+
+    'setForSale',
+    'updateForSale',
+    'buySomeAvatar',
+    'removeListing',
+
+    'modifyRewardStates',
+    'depositForRewards',
     'withdrawRewards',
-    'importAvatar'
+    'setPayRate',
+    'setRoyalty',
+    'checkXGCBalance',
+    'checkThisContractBalanceXGC',
+    'resetRewardState',
+    'setAvatarPrice',
+    'reduceEligibleRewards'
+  ]
+});
+
+const xgcContract = new nearApi.Contract(wallet.account(), XGC_CONTRACT, { //'dev-1628898366672-7385992'
+  viewMethods: [
+    'ft_total_supply',
+    'ft_metadata',
+    'ft_balance_of'
+  ],
+  changeMethods: [
   ]
 });
 
@@ -83,7 +123,13 @@ const button = q('#sign-in-button');
 if (!wallet.isSignedIn()) {
   button.textContent = "Login with NEAR";
   q("#signed-out-flow").classList.remove("hide");
-  getPublicAvatars();
+  getGameRewardsState();
+  getPublicAvatars(function () {
+    getPublicOrders();
+  });
+
+  getXGCTotalSupply();
+
 } else {
 
   button.classList.add("hide");
@@ -92,8 +138,44 @@ if (!wallet.isSignedIn()) {
     faqItems[i].classList.add("hide");
   }
   displayInnerMenu(false);
+  getGameRewardsState();
   signedInProcess();
+
+  getXGCTotalSupply();
+  getXGCMyBalance();
+  getXGCGameBalance();
 }
+
+
+if (window.location.hash != "") {
+  HASH_ID = window.location.hash.split("#/")[1];
+}
+
+function hashMapper() {
+  if (HASH_ID == "account") {
+    console.log("Account hash!");
+    setTimeout(function () {
+      q("#account-id").click();
+    }, 1);
+  } else if (HASH_ID == "mural") {
+    setTimeout(function () {
+      q("#mural-button").click();
+    }, 1);
+  } else if (HASH_ID == "market") {
+    setTimeout(function () {
+      q("#market-button").click();
+    }, 1);
+  } else if (HASH_ID == "mint") {
+    setTimeout(function () {
+      q("#get-avatar").click();
+    }, 1);
+  } else if (HASH_ID == "xgc") {
+    setTimeout(function () {
+      q("#xgc-stats-button").click();
+    }, 1);
+  }
+}
+hashMapper();
 
 function displayInnerMenu(isSwitchingFromGame) {
   q("#mural-box").classList.remove("hide");
@@ -104,7 +186,7 @@ function displayInnerMenu(isSwitchingFromGame) {
   q("#get-avatar").classList.remove("hide");
   q("#account-id").innerHTML = wallet._authData.accountId.split(NEAR_NETWORK_NAME)[0];
   q("#contract-link").innerHTML = contract.contractId;
-  //q("#pending-rewards-total").classList.remove("hide");
+  q("#pending-rewards-total").classList.remove("hide");
 
   if (isSwitchingFromGame) {
     q("#signed-out-flow").classList.remove("hide");
@@ -124,20 +206,38 @@ document.getElementById('sign-in-button').addEventListener('click', () => {
         'getPlayers',
         'getAvatars',
         'initContract',
+        'initPlayerRewards',
         'setWordList',
         'mintAvatar',
         'getWordsList',
         'getLevelWords',
+        'updateLevel',
         'submitLastLevelPlayed',
-        //'getLastLevelPlayed',
         'getThisPlayerAddress',
-        //'getThisPlayerWordsEligibleForRewards',
         'sendDonations',
         'updateAvatarDescription',
         'moderatorRemoveAvatar',
+        'moderatorRemoveListing',
         'getAvatarMintCount',
+        'importAvatar',
+
+        'getOrders',
+        'setForSale',
+        'updateForSale',
+        'buySomeAvatar',
+        'removeListing',
+        'modifyRewardStates',
+
+        'getGameRewardsState',
+        'depositForRewards',
         'withdrawRewards',
-        'importAvatar'
+        'setPayRate',
+        'setRoyalty',
+        'checkXGCBalance',
+        'checkThisContractBalanceXGC',
+        'resetRewardState',
+        'setAvatarPrice',
+        'reduceEligibleRewards'
       ]
     });
   }
@@ -156,32 +256,83 @@ document.getElementById('sign-out-button-two').addEventListener('click', () => {
 function signedInProcess() {
 
   getAvatars(function () {
+    getPublicOrders();
     getPlayers();
     buildMural();
     watchDonationButton();
+    withdrawalWatcher();
+    availableRewardsWatcher();
     if (!IS_LOCKED) {
       q("#game-launcher").classList.remove("hide");
       displayCurrentGameAvatar();
       generateCurrentAvatar();
       watchAvatarSelection();
       q("#update-description").classList.remove("hide");
+      q("#update-market-price-input").classList.remove("hide");
+      q("#update-market-price").classList.remove("hide");
       updateDescriptionWatcher();
+      setAskingPriceWatcher();
+      removeListingWatcher();
       proceedToGame();
     } else {
       q("#all-account-avatars").innerHTML = '<div class="stats-label pointer green" onclick=\'' + 'q("#get-avatar").click();' + '\' style="border:none;width:100%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;">Please get a chain avatar character to play!</div>';
+      q("#update-description").classList.add("hide");
+      q("#update-market-price-input").classList.add("hide");
+      q("#update-market-price").classList.add("hide");
     }
   });
 }
 
 function buildMural() {
-  //console.log("Attempting to build mural");
   q("#mural").innerHTML = "";
 
-  for (var i = 0; i < DECOMPRESSED_AVATAR_DATA.length; i++) {
-    q("#mural").innerHTML += buildAvatarCanvas(i, false);
+  for (var i = 0; i < DECOMPRESSED_AVATARS.length; i++) {
+    q("#mural").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[i], false);
   }
   watchMuralSorting();
-  rankSorting(".rank-words");
+  rankSorting(".rank-words", "mural");
+};
+
+function buildMarket() {
+  q("#market-container").innerHTML = "";
+
+  for (var i = 0; i < ALL_DECOMPRESSED_MARKET_DATA.length; i++) {
+    if (!ALL_DECOMPRESSED_MARKET_DATA[i].forSale) { }
+    else {
+      console.log(ALL_DECOMPRESSED_MARKET_DATA[i]);
+      q("#market-container").innerHTML += buildMarketCanvas(ALL_DECOMPRESSED_MARKET_DATA[i], findAvatarFromId(ALL_DECOMPRESSED_MARKET_DATA[i].avatarId));
+    }
+  }
+  watchMarketSorting();
+  buildMarketBuyWatchers();
+};
+
+function buildMarketBuyWatchers() {
+  let market_details_boxes = document.querySelectorAll("#market-box .market-details-box");
+
+  for (let i = 0; i < market_details_boxes.length; i++) {
+    market_details_boxes[i].addEventListener("click", function (e) {
+      if (wallet.isSignedIn()) {
+        if (!IS_BUYING_PROGRESS) {
+          IS_BUYING_PROGRESS = true;
+          let this_item = e.target.parentElement;
+          if (this_item.classList.contains("market-canvas")) { } else {
+            this_item = this_item.parentElement;
+          }
+          buySomeAvatar(this_item.dataset.address, this_item.dataset.avatarid, this_item.dataset.price, function () {
+            IS_BUYING_PROGRESS = false;
+          });
+        }
+      } else {
+        let this_item = e.target.parentElement;
+        if (this_item.classList.contains("market-canvas")) { } else {
+          this_item = this_item.parentElement;
+        }
+        this_item.querySelector(".market-price-label").innerHTML = "Login to buy:";
+      }
+    });
+  }
+
 };
 
 function proceedToGame() {
@@ -189,6 +340,8 @@ function proceedToGame() {
     q("#game-launcher").addEventListener("click", function () {
       q("#signed-out-flow").classList.add("hide");
       q("#choose-avatar").classList.add("hide");
+      q("#market-box").classList.add("hide");
+      q("#xgc-stats").classList.add("hide");
       bootUpGame();
     });
   }
@@ -200,99 +353,239 @@ function importAvatar(address, data, description, incomingLevel, incomingCorrect
 
   contract.importAvatar({ addressForOwner: address, incomingAvatarData: to_save, description: description_save, level: incomingLevel, correctWords: incomingCorrectWords })
     .then(result => {
-      //console.log(result);
+      console.log(result);
     });
 }
 
 function moderatorRemoveAvatar(username, avatarIndex) {
   contract.moderatorRemoveAvatar({ _username: username, _avatarIndex: avatarIndex })
     .then(result => {
-      //console.log(result);
+      console.log(result);
+    });
+}
+
+function moderatorRemoveListing(username, avatarId) {
+  contract.moderatorRemoveListing({ _username: username, _avatarId: avatarId })
+    .then(result => {
+      console.log(result);
+    });
+};
+
+function reduceEligibleRewards(val) {
+  contract.reduceEligibleRewards({ value: val })
+    .then(result => {
+      console.log(result);
+    });
+}
+function checkXGCBalance() {
+  contract.checkXGCBalance({})
+    .then(result => {
+      console.log(result);
+    });
+}
+function checkThisContractBalanceXGC() {
+  contract.checkThisContractBalanceXGC({})
+    .then(result => {
+      console.log(result);
+    });
+}
+function getXGCTotalSupply() {
+  xgcContract.ft_total_supply({})
+    .then(result => {
+      console.log(result);
+      q("#xgc-supply").innerHTML = "Current supply: " + result / XGC_DECIMALS + " XGC";
+    });
+}
+function getXGCMetadata() {
+  xgcContract.ft_metadata({})
+    .then(result => {
+      console.log(result);
+    });
+}
+function getXGCMyBalance() {
+  xgcContract.ft_balance_of({ account_id: (wallet._authData.accountId).toString() })
+    .then(result => {
+      console.log(result);
+      q("#xgc-my-balance").innerHTML = "My balance: " + result / XGC_DECIMALS + " XGC";
+    });
+}
+function getXGCGameBalance() {
+  xgcContract.ft_balance_of({ account_id: CONTRACT })
+    .then(result => {
+      console.log(result);
+      q("#xgc-game-balance").innerHTML = "Game balance: " + result / XGC_DECIMALS + " XGC";
+    });
+}
+function parsePlayerBalances() {
+  let sum = 0;
+  for (var i = 0; i < ALL_PLAYERS.length; i++) {
+    sum += parseInt(ALL_PLAYERS[i].rewards);
+  }
+  return sum;
+};
+function setAvatarPrice(price) {
+  contract.setAvatarPrice({ _price: price })
+    .then(result => {
+      console.log(result);
+    });
+}
+
+async function depositForRewards(amount) {
+  contract.depositForRewards({ value: amount })
+    .then(result => {
+      console.log(result);
+    });
+};
+
+function resetRewardState() {
+  contract.resetRewardState({})
+    .then(result => {
+      console.log(result);
+    });
+}
+
+function setRoyalty(royalty) {
+  contract.setRoyalty({ _royalty: royalty })
+    .then(result => {
+      console.log(result);
     });
 }
 
 function sendDonations(incoming) {
   contract.sendDonations({ _amountInNear: utils.format.parseNearAmount(incoming.toString()) })
     .then(result => {
-      //console.log(result);
+      console.log(result);
     });
 };
-function withdrawRewards() {
-  contract.withdrawRewards()
+function withdrawRewards(callback) {
+  contract.withdrawRewards({}, 150000000000000)
     .then(result => {
-      //console.log(result);
+      console.log(result);
+      callback();
     });
 }
-async function getPublicAvatars() {
+async function getPublicAvatars(callback) {
   contract.getAvatars({})
     .then(result => {
-      //console.log(result);
-      ALL_AVATAR_DATA = result;
+      console.log(result);
+      ORIGINAL_AVATAR_DATA = result;
       decompressAvatarData();
       buildMural();
+      callback();
     });
-}
-function decompressAvatarData() {
-  let data_to_save = [];
-  let decompress_descriptions = [];
-  let data_highest_levels = [];
-  let data_correct_word_totals = [];
-  let data_ids = [];
-  let data_addresses = [];
+};
 
-  let new_data_output = [];
-  let new_desc_output = [];
-  let new_highest_levels = [];
-  let new_correct_word_totals = [];
-  let new_ids = [];
-  let new_addresses = [];
+async function getPublicOrders() {
+  contract.getOrders({})
+    .then(result => {
+      console.log(result);
+      ALL_MARKET_DATA = result;
+      decompressMarketData();
+      buildMarket();
+    });
+};
 
-  for (var i = 0; i < ALL_AVATAR_DATA.length; i++) {
-    for (var j = 0; j < ALL_AVATAR_DATA[i].datas.length; j++) {
-      new_data_output.push(LZUTF8.decompress(ALL_AVATAR_DATA[i].datas[j], { inputEncoding: "StorageBinaryString" }));
-      new_desc_output.push(LZUTF8.decompress(sanitize(ALL_AVATAR_DATA[i].descriptions[j]), { inputEncoding: "StorageBinaryString" }));
-      new_highest_levels.push(ALL_AVATAR_DATA[i].highestLevels[j]);
-      new_correct_word_totals.push(ALL_AVATAR_DATA[i].correctWordTotals[j]);
-      new_ids.push(ALL_AVATAR_DATA[i].ids[j]);
-      new_addresses.push(ALL_AVATAR_DATA[i].address);
+async function setPayRate(rate) {
+  contract.setPayRate({ _pay_rate: rate }, GAS_TO_ATTACH)
+    .then(result => {
+      console.log(result);
+    });
+};
+
+async function getGameRewardsState() {
+  contract.getGameRewardsState({})
+    .then(result => {
+      GAME_REWARDS_STATE_IN_NEAR = {
+        currentEligibleRewards: result[0].currentEligibleRewards / XGC_DECIMALS,
+        minimumBalance: utils.format.formatNearAmount(result[0].minimumBalance),
+        minimumWithdrawalAmount: result[0].minimumWithdrawalAmount,
+        payRate: result[0].payRate / XGC_DECIMALS,
+        withdrawalFee: result[0].withdrawalFee,
+        avatarPrice: result[0].avatarPrice
+      }
+      q("#mint-character-button").innerHTML = "Donate for " + utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.avatarPrice) + " N";
+      q("#eligible-rewards").innerHTML = result[0].currentEligibleRewards / XGC_DECIMALS + " XGC available";
+      CURRENT_PAY_RATE = result[0].payRate / XGC_DECIMALS;
+      console.log(result);
+    });
+};
+
+async function setForSale(_price, callback) {
+  let price_to_submit = _price.toString();
+  contract.setForSale({ _avatarId: parseInt(CURRENT_AVATAR_ID), price: utils.format.parseNearAmount(price_to_submit) })
+    .then(result => {
+      console.log(result);
+      callback();
+    });
+};
+
+async function updateThisOrder(_avatarId, _forSale, _price, callback) {
+  let price_to_submit = _price.toString();
+
+  contract.updateForSale({ _avatarId: parseInt(CURRENT_AVATAR_ID), isForSale: true, price: utils.format.parseNearAmount(price_to_submit) })
+    .then(result => {
+      console.log(result);
+      callback();
+    });
+};
+
+async function removeThisOrder(callback) {
+  contract.removeListing({ _avatarId: parseInt(CURRENT_AVATAR_ID) })
+    .then(result => {
+      console.log(result);
+      callback();
+    });
+};
+
+async function buySomeAvatar(addressOfOwner, actualIdOfAvatarToBuy, price, callback) {
+  contract.buySomeAvatar({ addressOfTrueOwner: addressOfOwner, _avatarIdToBuy: parseInt(actualIdOfAvatarToBuy) }, GAS_TO_ATTACH, utils.format.parseNearAmount(price))
+    .then(result => {
+      console.log(result);
+      callback();
+    });
+};
+
+function decompressMarketData() {
+  let newArrayOfMarketObjects = [];
+
+  for (var i = 0; i < ALL_MARKET_DATA.length; i++) {
+    for (var j = 0; j < ALL_MARKET_DATA[i].length; j++) {
+      newArrayOfMarketObjects.push(ALL_MARKET_DATA[i][j]);
     }
   }
-  data_to_save = data_to_save.concat(new_data_output);
-  decompress_descriptions = decompress_descriptions.concat(new_desc_output);
-  data_highest_levels = data_highest_levels.concat(new_highest_levels);
-  data_correct_word_totals = data_correct_word_totals.concat(new_correct_word_totals);
-  data_ids = data_ids.concat(new_ids);
-  data_addresses = data_addresses.concat(new_addresses);
-
-  //console.log(data_to_save);
-  //ALL_AVATAR_DATA.avatarData = data_to_save;
-  DECOMPRESSED_AVATAR_DATA = data_to_save;
-  DECOMPRESSED_AVATAR_DESCRIPTIONS = decompress_descriptions;
-  DECOMPRESSED_NEW_HIGHEST_LEVLES = data_highest_levels;
-  DECOMPRESSED_CORRECT_WORD_TOTALS = data_correct_word_totals;
-  DECOMPRESSED_IDS = data_ids;
-  DECOMPRESSED_ADDRESSES = data_addresses;
-  //ALL_AVATAR_DATA.descriptions = decompress_descriptions;
+  ALL_DECOMPRESSED_MARKET_DATA = newArrayOfMarketObjects;
 };
+
+function decompressAvatarData() {
+  let newAvatarDatas = [];
+
+  for (var i = 0; i < ORIGINAL_AVATAR_DATA.length; i++) {
+    for (var j = 0; j < ORIGINAL_AVATAR_DATA[i].datas.length; j++) {
+      newAvatarDatas.push({
+        data: LZUTF8.decompress(ORIGINAL_AVATAR_DATA[i].datas[j], { inputEncoding: "StorageBinaryString" }),
+        description: LZUTF8.decompress(sanitize(ORIGINAL_AVATAR_DATA[i].descriptions[j]), { inputEncoding: "StorageBinaryString" }),
+        highestLevel: ORIGINAL_AVATAR_DATA[i].highestLevels[j],
+        correctWordTotal: ORIGINAL_AVATAR_DATA[i].correctWordTotals[j],
+        id: ORIGINAL_AVATAR_DATA[i].ids[j],
+        address: ORIGINAL_AVATAR_DATA[i].address
+      });
+    }
+  }
+
+  DECOMPRESSED_AVATARS = newAvatarDatas;
+};
+
 async function getAvatars(callback) {
   contract.getAvatars({})
     .then(result => {
-      //console.log(result);
-      //console.log("get avatars!");
-      //console.log(result);
-      //console.log("all avatars");
-      //console.log(result);
-      ALL_AVATAR_DATA = result;
+      ORIGINAL_AVATAR_DATA = result;
       decompressAvatarData();
       let wasFound = false;
       for (var k = 0; k < result.length; k++) {
-        //console.log(result);
         if (result[k].address == wallet._authData.accountId) {
           for (var a = 0; a < result[k].ids.length; a++) {
-            //console.log("Found a: " + a);
             CURRENT_AVATAR_TO_SUBMIT_INDEX = a; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
-            CURRENT_AVATAR_INDEX = convertAvatarIndexToArrayIndex(result[k].ids[a]);
-            AVATAR_INDEXES.push(convertAvatarIndexToArrayIndex(result[k].ids[a]));
+            CURRENT_AVATAR_ID = result[k].ids[a];
             wasFound = true;
           }
         }
@@ -308,18 +601,22 @@ async function getAvatars(callback) {
     });
 };
 
-function convertDecompressedIndexToUsersArrayIndex(CURRENT_AVATAR_INDEX) {
-  let findThisAvatarsBackendId = "";
-  for (var i = 0; i < DECOMPRESSED_IDS.length; i++) {
-    if (CURRENT_AVATAR_INDEX == i) {
-      findThisAvatarsBackendId = DECOMPRESSED_IDS[i];
+function findAvatarFromId(avatarId) {
+  for (var i = 0; i < DECOMPRESSED_AVATARS.length; i++) {
+    if (avatarId == DECOMPRESSED_AVATARS[i].id) {
+      return DECOMPRESSED_AVATARS[i];
     }
   }
+  return "";
+};
 
-  for (var j = 0; j < ALL_AVATAR_DATA.length; j++) {
-    if (ALL_AVATAR_DATA[j].address == wallet._authData.accountId) {
-      for (var s = 0; s < ALL_AVATAR_DATA[j].ids.length; s++) {
-        if (findThisAvatarsBackendId == ALL_AVATAR_DATA[j].ids[s]) {
+function convertDecompressedIndexToUsersArrayIndex() {
+
+  for (var j = 0; j < DECOMPRESSED_AVATARS.length; j++) {
+    if (ORIGINAL_AVATAR_DATA[j].address == wallet._authData.accountId) {
+      for (var s = 0; s < ORIGINAL_AVATAR_DATA[j].ids.length; s++) {
+        if (CURRENT_AVATAR_ID == ORIGINAL_AVATAR_DATA[j].ids[s]) {
+          console.log("Found at: " + CURRENT_AVATAR_ID);
           return s;
         }
       }
@@ -327,19 +624,8 @@ function convertDecompressedIndexToUsersArrayIndex(CURRENT_AVATAR_INDEX) {
   }
 }
 
-function convertAvatarIndexToArrayIndex(thisIdOfAvatar) {
-  for (var i = 0; i < DECOMPRESSED_IDS.length; i++) {
-    if (thisIdOfAvatar == DECOMPRESSED_IDS[i]) {
-      return i;
-    }
-  }
-  return -1;
-};
-
-
 function updateLastLevelPlayed(result, isCurrentPlayer) {
 
-  //q("#levels-played").innerHTML = result.previousLevelCompleted;
   if (isCurrentPlayer) {
     q("#last_level").innerHTML = result[CURRENT_PLAYER_INDEX].previousLevelCompleted;
     q("#last_wpm").innerHTML = result[CURRENT_PLAYER_INDEX].previousWpm;
@@ -354,28 +640,22 @@ function updateLastLevelPlayed(result, isCurrentPlayer) {
 async function getPlayers() {
   contract.getPlayers({})
     .then(result => {
-      //console.log(result);
       let wasFound = false;
-      //console.log(result);
       ALL_PLAYERS = result;
-      //console.log("palyers");
       for (var k = 0; k < result.length; k++) {
         if (result[k].address == wallet._authData.accountId) {
-          //console.log("Found k: " + k);
           CURRENT_PLAYER_INDEX = k;
           wasFound = true;
         }
       }
 
       if (wasFound) {
-        //q("#last_level").innerHTML = result[CURRENT_PLAYER_INDEX].previousLevelCompleted;
         updateLastLevelPlayed(result, true);
-        /*CURRENT_ELIGIBLE_AMOUNT = (ALL_PLAYERS[CURRENT_PLAYER_INDEX].wordCountEligibleForRewards * CURRENT_PAY_RATE);
-        q("#pending-rewards-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";
-        q("#earned-amount-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";*/
+        CURRENT_ELIGIBLE_AMOUNT = parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards / XGC_DECIMALS);
+        q("#pending-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
+        q("#earned-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
       }
-      //console.log("get players!");
-      //console.log(result);
+      q("#xgc-player-balances").innerHTML = "Player balances: " + parsePlayerBalances() / XGC_DECIMALS + " XGC";
     });
 };
 async function getAvatarMintCount() {
@@ -384,6 +664,12 @@ async function getAvatarMintCount() {
       console.log(result);
     });
 }
+async function initPlayerRewards() {
+  contract.initPlayerRewards({})
+    .then(result => {
+      console.log(result);
+    });
+};
 
 function bootUpGame() {
   q("#game-container").classList.remove("hide");
@@ -402,6 +688,7 @@ function Game() {
   let this_word = "";
   let this_word_index = 0;
   let CORRECT_COUNT = 0;
+  let CURRENT_LEVEL_CORRECT_COUNT = 0;
   let WRONG_COUNT = 0;
   let that = this;
   let game_running = true;
@@ -426,6 +713,9 @@ function Game() {
   let THIS_LEVEL_WORD_INDEXES = [];
   let moving_between_levels = true;
 
+  this.getCorrectCount = function () {
+    return CORRECT_COUNT;
+  };
   this.isGameOver = function () {
     return GAME_LOST;
   };
@@ -439,6 +729,7 @@ function Game() {
     CURRENT_WPM = 0;
     LEVEL = 1;
     CORRECT_COUNT = 0;
+    CURRENT_LEVEL_CORRECT_COUNT = 0;
     WRONG_COUNT = 0;
     that.resetTimer();
     current_words = [];
@@ -453,13 +744,11 @@ function Game() {
       q("#notification").classList.add("hide");
       q("#words").classList.remove("hide");
       game.start();
-      game.saveGameAndClaimWatcher();
       game.startThisWordWatcher();
       IS_FETCHING_WORDS = false;
     });
-
-    //that.resetAndProceedToNewSession();
   };
+
   this.getLevel = function () {
     return LEVEL;
   }
@@ -468,47 +757,46 @@ function Game() {
     WORDS_TO_USE = words;
     q("#notification").innerHTML = "Get ready..."
     that.getLevelWords(function () {
-      q("#game-start-lost-overlay").classList.add("hide");
-      q("#notification").classList.add("hide");
-      const width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-      if (width < 500) { WIDTH_FOR_ITEMS = 250; }
+      that.updateLevel(function () {
+        q("#game-start-lost-overlay").classList.add("hide");
+        q("#notification").classList.add("hide");
+        const width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+        if (width < 500) { WIDTH_FOR_ITEMS = 250; }
 
-      if (LEVEL == 1) { size = 5; }
-      else if (LEVEL == 2) { size = 7; }
-      else if (LEVEL == 3) { size = 10; }
-      else if (LEVEL == 4) { size = 15; }
-      else if (LEVEL == 5) { size = 20; }
-      else if (LEVEL >= 6) { size = 25; }
+        if (LEVEL == 1) { size = 5; }
+        else if (LEVEL == 2) { size = 7; }
+        else if (LEVEL == 3) { size = 10; }
+        else if (LEVEL >= 4) { size = 15; }
 
-      q("#level").innerHTML = (LEVEL >= 12 ? "expert" : LEVEL);
-      //CUMULATIVE_SIZE += CORRECT_COUNT;
+        q("#level").innerHTML = (LEVEL >= 12 ? "expert" : LEVEL);
 
-      let builder = "";
-      for (var x = 0; x < THIS_LEVEL_WORD_INDEXES.length; x++) {
-        let random_word = WORDS.english[THIS_LEVEL_WORD_INDEXES[x]]; // WORDS_TO_USE.english[Math.floor(Math.random() * (WORDS_TO_USE.english.length - 1))];
-        current_words.push(random_word);
-        if (x == 0) { this_word = random_word.split(""); }
+        let builder = "";
+        for (var x = 0; x < THIS_LEVEL_WORD_INDEXES.length; x++) {
+          let random_word = WORDS.english[THIS_LEVEL_WORD_INDEXES[x]];
+          current_words.push(random_word);
+          if (x == 0) { this_word = random_word.split(""); }
 
-        let current_word_chars = random_word.split("");
-        let char_builder = "";
-        for (var c = 0; c < current_word_chars.length; c++) {
-          char_builder += '<span class="char">' + current_word_chars[c] + '</span>';
+          let current_word_chars = random_word.split("");
+          let char_builder = "";
+          for (var c = 0; c < current_word_chars.length; c++) {
+            char_builder += '<span class="char">' + current_word_chars[c] + '</span>';
+          }
+          builder += '<div class="word ' + (x == 0 ? "current-word " : "not-current-word") + '" style="right:' + (Math.random() * WIDTH_FOR_ITEMS) + 'px;">' + char_builder + '</div>';
         }
-        builder += '<div class="word ' + (x == 0 ? "current-word " : "not-current-word") + '" style="right:' + (Math.random() * WIDTH_FOR_ITEMS) + 'px;">' + char_builder + '</div>';
-      }
 
-      q("#words").innerHTML = builder;
-      that.setAnimationByLevel();
+        q("#words").innerHTML = builder;
+        that.setAnimationByLevel();
 
-      if (!TIMER_ONCE) {
-        STATIC_Y_AVATAR_HEIGHT = that.currentAvatarPosition()[1];
-        that.moveItem(q("#current-avatar-canvas"), that.currentAvatarPosition());
-        TIMER_ONCE = true;
-        that.timer();
-      }
+        if (!TIMER_ONCE) {
+          STATIC_Y_AVATAR_HEIGHT = that.currentAvatarPosition()[1];
+          that.moveItem(q("#current-avatar-canvas"), that.currentAvatarPosition());
+          TIMER_ONCE = true;
+          that.timer();
+        }
 
-      moving_between_levels = false;
-      callback();
+        moving_between_levels = false;
+        callback();
+      });
     });
   };
   this.pauseTimer = function () {
@@ -594,7 +882,6 @@ function Game() {
     }
   }
   this.unhideStats = function () {
-    //q("#levels-played").parentElement.classList.remove("hide");
     q("#level").parentElement.classList.remove("hide");
     q("#wpm").parentElement.classList.remove("hide");
     q("#accuracy").parentElement.classList.remove("hide");
@@ -670,14 +957,14 @@ function Game() {
     that.setAnimationByLevel();
 
     if (!game_running && !GAME_LOST) {
-      //console.log("Tried to get init from here");
+      console.log("Tried to get init from here");
       current_selected_word.childNodes[this_word_index].classList.remove("current-word");
       that.resetAndProceedToNewSession();
 
     }
   };
   this.startThisWordWatcher = function () {
-    var checkTime = 100; //100 ms interval
+    var checkTime = 10;
     var check = setInterval(function () {
       if (typeof q("#words").childNodes[this_word_index] == 'undefined') {
         // changing levels
@@ -702,41 +989,24 @@ function Game() {
     q("#notification").innerHTML = 'Game over...';
     q("#words").classList.add("hide");
     q("#words").childNodes[this_word_index].classList.add("hide");
-    // that.submitLastLevelPlayed(function (result) {
     q("#notification").innerHTML = "Click to start a new game";
-    //that.updateLastLevelPlayed(result);
-    // });
     IN_CURRENT_GAME = false;
   };
 
-  this.saveGameAndClaimWatcher = function () {
-    /* q("#save-game-results-and-claim").addEventListener('click', function () {
-       //console.log("Save");
-       that.saveGameResultToChain();
-     });*/
-  }
   this.submitLastLevelPlayed = async function (callback) {
-    //console.log("Submitting correct count: " + CORRECT_COUNT);
-    //console.log("Submitting these words");
-    //console.log(THIS_LEVEL_WORD_INDEXES);
-
-    // MUST SUBMIT THE AVATAR INDEX OF THIS PARTICULAR USER IN THIER ARRAY.
-
+    console.log("Submitting this many correct words");
+    console.log(CURRENT_LEVEL_CORRECT_COUNT);
     contract.submitLastLevelPlayed({
-      level: parseInt(LEVEL), wpm: parseInt(CURRENT_WPM), accuracy: parseInt(CURRENT_ACCURACY), wordsToSubmit: THIS_LEVEL_WORD_INDEXES
-      , correctCount: CORRECT_COUNT, _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX)
-    })
+      level: parseInt(LEVEL),
+      wpm: parseInt(CURRENT_WPM),
+      accuracy: parseInt(CURRENT_ACCURACY),
+      correctCount: CURRENT_LEVEL_CORRECT_COUNT,
+      _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX)
+    }, GAS_TO_ATTACH)
       .then(result => {
-        //console.log("last level saved");
-        //console.log(result);
-        //console.log(result);
-        DECOMPRESSED_CORRECT_WORD_TOTALS[CURRENT_AVATAR_INDEX] = parseInt(DECOMPRESSED_CORRECT_WORD_TOTALS[CURRENT_AVATAR_INDEX]) + parseInt(CORRECT_COUNT);
-        if (parseInt(LEVEL) > DECOMPRESSED_NEW_HIGHEST_LEVLES[CURRENT_AVATAR_INDEX]) {
-          DECOMPRESSED_NEW_HIGHEST_LEVLES[CURRENT_AVATAR_INDEX] = parseInt(LEVEL);
-        }
-        //CURRENT_ELIGIBLE_AMOUNT += (CORRECT_COUNT * CURRENT_PAY_RATE);
-
-        buildMural();
+        console.log("last level saved");
+        console.log(result);
+        CURRENT_LEVEL_CORRECT_COUNT = 0;
         callback(result);
       });
   };
@@ -744,12 +1014,14 @@ function Game() {
   this.getLevelWords = async function (callback) {
     contract.getLevelWords({ level: LEVEL })
       .then(result => {
-        // console.log("level words");
-        //console.log(result);
-        //console.log("word chain received!");
-        //console.log(result);
         THIS_LEVEL_WORD_INDEXES = result;
-        //console.log(THIS_LEVEL_WORD_INDEXES);
+        callback()
+      });
+  };
+  this.updateLevel = async function (callback) {
+    contract.updateLevel({ level: LEVEL })
+      .then(result => {
+        console.log(result);
         callback()
       });
   };
@@ -757,63 +1029,33 @@ function Game() {
   this.getLastLevelPlayed = async function () {
     contract.getLastLevelPlayed({})
       .then(result => {
-        //console.log("last level played is:");
-        //console.log(result);
       });
   };
 
   this.getWordsList = async function (callback) {
-    //console.log("get words list again");
     GOT_WORDS_LIST_ONCE = true;
     contract.getWordsList({})
       .then(result => {
-        //console.log("word list ipfs received");
-        //console.log(result);
         fetch('https://ipfs.io/ipfs/' + result)
           .then(function (response) {
-            // The response is a Response instance.
-            // You parse the data into a useable format using `.json()`
             return response.json();
           }).then(function (data) {
-            // `data` is the parsed version of the JSON returned from the above endpoint.
-            //console.log(data);  // { "userId": 1, "id": 1, "title": "...", "body": "..." }
             WORDS = data;
             callback();
           });
       });
   };
 
-  /*  this.setWordList = async function (incomingWordsIpfsLocation) {
-      contract.setWordList({ wordsIpfsLocation: "QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i" })
-        .then(result => {
-          //console.log("word list ipfs location saved to contract!");
-          //console.log(result);
-        });
-    };*/
-  /*this.checkPayEligibleWordsForToday = async function() {
-    contract.checkPayEligibleWordsForToday({ })
-      .then(result => {
-        //console.log("checking eligible words for today!");
-        let eligible_words_for_today = document.querySelectorAll(".eligible-words-for-today");
-        for (var i = 0; i < eligible_words_for_today.length; i++) {
-          eligible_words_for_today[i].innerHTML = result;
-        }
-    });
-  };*/
-
-  this.fullInitialize = async function () {
-
-    //that.setWordList();
-    //that.initializePlayers();
-    // that.initializeAvatarMinting();
-  };
-
   this.initContract = async function () {
     contract.initContract({ wordsList: "QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i", mintCount: 0 })
       .then(result => {
-        //console.log("initialize players!");
-        //console.log(result);
-        //console.log(result);
+        console.log(result);
+
+        contract.modifyRewardStates({ _minimum_balance: "1", _pay_rate: "1", _minimum_withdrawal_amount: "1", _withdrawal_fee: "1" })
+          .then(result => {
+            console.log(result);
+          });
+
       });
   };
 
@@ -821,8 +1063,6 @@ function Game() {
   this.getAndSetCurrentEligibleWordsForToday = async function () {
     contract.getAndSetCurrentEligibleWordsForToday({})
       .then(result => {
-        //console.log("returning eligible words!");
-        //console.log(result);
         let eligible_words_for_today = document.querySelectorAll(".eligible-words-for-today");
         for (var i = 0; i < eligible_words_for_today.length; i++) {
           eligible_words_for_today[i].innerHTML = result;
@@ -832,61 +1072,8 @@ function Game() {
   this.getThisPlayerAddress = async function () {
     contract.getThisPlayerAddress({})
       .then(result => {
-        //console.log("checking this player address!");
-        //console.log(result);
+        console.log(result);
       });
-  };
-  /*this.getThisPlayerRewardsToClaim = async function (callback) {
-    contract.getThisPlayerRewardsToClaim({})
-      .then(result => {
-        //console.log("checking this player rewards to claim!");
-        //console.log(result);
-        q("#pending-rewards-total").innerHTML = (result/1000000).toFixed(5)+ " N";
-        callback();
-    });
-  };*/
-
-  /*this.getThisPlayerWordCountEligibleForRewards = async function () {
-    contract.getThisPlayerWordCountEligibleForRewards({})
-      .then(result => {
-        //console.log("checking this player wrod count eligible for rewards!");
-        //console.log(result);
-      });
-  };
-
-  this.initializeAvatarMinting = async function () {
-    contract.initializeAvatarMinting({})
-      .then(result => {
-        //console.log("intiialize avatar minting");
-        //console.log(result);
-      });
-  };*/
-
-  this.saveGameResultToChain = async function () {
-    try {
-      await contract.saveGameResult({
-        result: CORRECT_CHARACTER_COUNT + "/" + (CORRECT_CHARACTER_COUNT + WRONG_CHARACTER_COUNT) + "-" + LEVEL + "-" + CURRENT_WPM + "-" + CURRENT_ACCURACY
-      })
-    } catch (e) {
-      alert(
-        'Something went wrong! ' +
-        'Maybe you need to sign out and back in? ' +
-        'Check your browser console for more info.'
-      )
-      throw e
-    } finally {
-      // re-enable the form, whether the call succeeded or failed
-      //that.resetAndProceedToNewSession();
-      //console.log("data saved");
-    }
-
-    //await fetchGameResult()
-
-    document.querySelector('#notification').classList.remove("hide");
-
-    /* setTimeout(() => {
-       document.querySelector('[data-behavior=notification]').style.display = 'none'
-     }, 6000);*/
   };
 
 
@@ -903,17 +1090,11 @@ function Game() {
       q("#notification").classList.remove("hide");
       q("#notification").innerHTML = "Saving to blockchain, loading level " + (game.getLevel() + 1) + "...";
       that.submitLastLevelPlayed(function (result) {
-        //console.log("last level played submit");
-        //console.log(result);
-        updateLastLevelPlayed(result, false);
-        //that.getThisPlayerRewardsToClaim(function(){
-        // that.getAndSetCurrentEligibleWordsForToday();
         LEVEL++;
         that.init(WORDS, function () {
           timer_paused = false;
           that.timer();
         });
-        //});
       });
     }
     game_running = true;
@@ -946,16 +1127,19 @@ function Game() {
 
           if (matchingCharArray(current_completed_string, this_word)) {
             current_selected_word.childNodes[this_word.length - 1].classList.add("current-char");
+            CORRECT_COUNT++;
+            CURRENT_LEVEL_CORRECT_COUNT++;
             that.checkAndSetNextWord();
             current_selected_word.classList.add("correct");
             current_selected_word.classList.add("hide");
-            CORRECT_COUNT++;
+
             let clear_sound = new Audio('audio/clear.mp3');
             clear_sound.play();
-            //CURRENT_ELIGIBLE_AMOUNT += CURRENT_PAY_RATE;
-            //q("#pending-rewards-total").classList.remove("hide");
-            //q("#pending-rewards-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";
-            //q("#earned-amount-total").innerHTML = "+" + CURRENT_ELIGIBLE_AMOUNT.toFixed(5) + " N";
+            console.log("Correct count");
+            console.log(CORRECT_COUNT);
+            CURRENT_ELIGIBLE_AMOUNT += CURRENT_PAY_RATE;
+            q("#pending-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
+            q("#earned-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
             current_completed_string = [];
           } else {
             for (var char = 0; char < current_completed_string.length; char++) {
@@ -1006,9 +1190,9 @@ function convertToHex(array) {
     } else {
       a = array[i].split("(")[1].split(")")[0];
       a = a.split(",");
-      var b = a.map(function (x) {             //For each array element
-        x = parseInt(x).toString(16);      //Convert to a base16 string
-        return (x.length == 1) ? "0" + x : x;  //Add zero if we get only one character
+      var b = a.map(function (x) {
+        x = parseInt(x).toString(16);
+        return (x.length == 1) ? "0" + x : x;
       })
       b = "0x" + b.join("");
       newArray.push(b);
@@ -1089,12 +1273,9 @@ let DISPLAY_AVATAR = [
 
 function startGame() {
   game = new Game();
-  game.saveGameAndClaimWatcher();
   game.getWordsList(function () {
-    //game.getThisPlayerRewardsToClaim(function () { });
     q("#game-container").classList.remove("hide");
     q("#notification").innerHTML = "Click to start";
-    //game.getAndSetCurrentEligibleWordsForToday();
     watchLauncher();
 
   });
@@ -1122,36 +1303,69 @@ function watchLauncher() {
   });
 };
 function displayCurrentGameAvatar() {
-  let splitAvatarData = DECOMPRESSED_AVATAR_DATA[CURRENT_AVATAR_INDEX].split(",");
+  let splitAvatarData = findAvatarFromId(CURRENT_AVATAR_ID).data.split(",");
   for (var s = 0; s < splitAvatarData.length; s++) {
     if (splitAvatarData[s] == "") { }
     else {
       splitAvatarData[s] = "#" + splitAvatarData[s].split("0x")[1];
     }
   }
-  for (var i = 0; i < 64; i++) {
-    q("#current-avatar-canvas").innerHTML += '<div class="sm-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
+  for (var i = 0; i < splitAvatarData.length; i++) {
+    if (splitAvatarData.length == 64) {
+      q("#current-avatar-canvas").innerHTML += '<div class="sm-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
+    } else {
+      q("#current-avatar-canvas").innerHTML += '<div class="sm-pixel large" style="background-color:' + splitAvatarData[i] + '"></div>';
+    }
     q("#display-avatar-canvas").innerHTML += '<div class="sm-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
-    //q("#account-avatar-canvas").innerHTML += '<div class="sm-pixel" style="background-color:' + AVATAR[i] + '"></div>';
+  }
+  if (splitAvatarData.length > 64) {
+    q("#current-avatar-canvas").classList.add("large");
+  } else {
+    q("#current-avatar-canvas").classList.remove("large");
   }
 };
 
 function generateCurrentAvatar() {
   q("#all-account-avatars").innerHTML = "";
+  console.log("building user");
+  let was_found = false;
+  for (var j = 0; j < DECOMPRESSED_AVATARS.length; j++) {
 
-  for (var j = 0; j < AVATAR_INDEXES.length; j++) {
-    //console.log("shipping: " + AVATAR_INDEXES[j]);
-    //for (var check = 0; check < DECOMPRESSED_IDS.length; check++){
-    let is_selected_index = CURRENT_AVATAR_INDEX == AVATAR_INDEXES[j];
-    //if (AVATAR_INDEXES[j] == DECOMPRESSED_IDS[check]) {
-    q("#all-account-avatars").innerHTML += buildAvatarCanvas(AVATAR_INDEXES[j], is_selected_index);
-    //}
-    //}
+    if (DECOMPRESSED_AVATARS[j].address == wallet._authData.accountId) {
+      was_found = true;
+      console.log("Found address");
+      let is_selected_index = (CURRENT_AVATAR_ID == DECOMPRESSED_AVATARS[j].id);
+      q("#all-account-avatars").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[j], is_selected_index);
+    }
   }
-  if (AVATAR_INDEXES.length > 0) {
+
+
+  if (was_found) {
     q("#update-avatar-description").classList.remove("hide");
   }
+  setTimeout(function () {
+    q(".account-avatar-canvas.selected-avatar .descriptions").click();
+  }, 100);
+
 };
+
+function getOrderForAvatarId(thisId) {
+  let was_found = false;
+
+  if (typeof ALL_DECOMPRESSED_MARKET_DATA != 'undefined') {
+    for (var i = 0; i < ALL_DECOMPRESSED_MARKET_DATA.length; i++) {
+      if (ALL_DECOMPRESSED_MARKET_DATA[i].avatarId == thisId) {
+        was_found = true;
+        return ALL_DECOMPRESSED_MARKET_DATA[i];
+      }
+    }
+  }
+
+  if (!was_found) {
+    return false;
+  }
+};
+
 function watchAvatarSelection() {
   let all_avatars = document.querySelectorAll("#all-account-avatars .account-avatar-canvas");
   for (var k = 0; k < all_avatars.length; k++) {
@@ -1162,9 +1376,23 @@ function watchAvatarSelection() {
         }
         e.target.parentElement.classList.add("selected-avatar");
         q("#update-avatar-description").value = e.target.innerHTML;
-        CURRENT_AVATAR_INDEX = e.target.parentElement.dataset.index; // EXTRACTED INDEXES FOR THE FRONTEND!
+        let orderForAVatarId = getOrderForAvatarId(e.target.parentElement.dataset.avatarid);
+        if (orderForAVatarId == false) {
+          q("#update-market-price-input").value = "";
+          q("#remove-this-listing-button").classList.add("hide");
+          q("#update-market-price").innerHTML = "Set asking price for 1 XGC";
+        }
+        else {
+          if (orderForAVatarId.forSale) {
+            q("#update-market-price-input").value = utils.format.formatNearAmount(orderForAVatarId.priceForSale);
+            q("#remove-this-listing-button").classList.remove("hide");
+            q("#update-market-price").innerHTML = "Update asking price";
+          }
+        }
 
-        CURRENT_AVATAR_TO_SUBMIT_INDEX = convertDecompressedIndexToUsersArrayIndex(CURRENT_AVATAR_INDEX);
+        CURRENT_AVATAR_ID = e.target.parentElement.dataset.avatarid;
+
+        CURRENT_AVATAR_TO_SUBMIT_INDEX = convertDecompressedIndexToUsersArrayIndex();
 
         q("#current-avatar-canvas").innerHTML = "";
         setTimeout(function () {
@@ -1175,21 +1403,73 @@ function watchAvatarSelection() {
   }
 };
 
-function buildAvatarCanvas(index, is_selected_index) {
-  let splitAvatarData = DECOMPRESSED_AVATAR_DATA[index].split(",");
+function buildMarketCanvas(marketItem, avatarItem) {
+
+  let splitAvatarData = avatarItem.data.split(",");
   for (var s = 0; s < splitAvatarData.length; s++) {
     if (splitAvatarData[s] == "") { }
     else {
       splitAvatarData[s] = "#" + splitAvatarData[s].split("0x")[1];
     }
   }
-  let builder = '<div data-index="' + index + '" class="account-avatar-canvas ' + (is_selected_index ? "selected-avatar" : "") + '"><div class="avatar-account-box">';
-  for (var i = 0; i < 64; i++) {
-    builder += '<div class="md-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
-  }
-  builder += '</div><div class="avatar-box"><span class="rank-levels">' + DECOMPRESSED_NEW_HIGHEST_LEVLES[index] + '.</span><span class="rank-words">' + DECOMPRESSED_CORRECT_WORD_TOTALS[index] + '</span><span class="mint-ids">' + DECOMPRESSED_IDS[index] + '</span><div class="truncate">' + DECOMPRESSED_ADDRESSES[index].split(NEAR_NETWORK_NAME)[0] + '</div></div>';
 
-  builder += '<div class="descriptions">' + DECOMPRESSED_AVATAR_DESCRIPTIONS[index] + '</div>';
+  let this_price = utils.format.formatNearAmount(marketItem.priceForSale);
+  let builder = "";
+  if (splitAvatarData.length == 64) {
+    builder = '<div data-price="' + this_price + '" data-address="' + avatarItem.address + '" data-avatarid="' + avatarItem.id + '" class="account-avatar-canvas market-canvas"><div class="avatar-account-box">';
+  } else {
+    builder = '<div data-price="' + this_price + '" data-address="' + avatarItem.address + '" data-avatarid="' + avatarItem.id + '" class="account-avatar-canvas large market-canvas"><div class="avatar-account-box">';
+  }
+  for (var i = 0; i < splitAvatarData.length; i++) {
+    if (splitAvatarData.length == 64) {
+      builder += '<div class="md-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
+    } else {
+      builder += '<div class="lg-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
+    }
+  }
+  builder += '<div class="market-descriptions">' + avatarItem.description + '</div>';
+
+  builder += '</div>';
+
+  builder += '<div class="avatar-box">';
+  builder += '<span class="rank-levels">' + avatarItem.highestLevel + '.</span><span class="rank-words">' + avatarItem.correctWordTotal + '</span><span class="mint-ids">' + avatarItem.id + '</span><div class="truncate">' + avatarItem.address.split(NEAR_NETWORK_NAME)[0] + '</div>';
+  builder += '</div>';
+
+  builder += '<div class="market-details-box">';
+
+  builder += '<span class="market-price-label">Buy:</span><span class="market-price">' + this_price + '</span><span> N</span>';
+
+  builder += '</div>';
+
+  builder += '</div>';
+
+  return builder;
+};
+
+function buildAvatarCanvas(avatarItem, is_selected) {
+  let splitAvatarData = avatarItem.data.split(",");
+  for (var s = 0; s < splitAvatarData.length; s++) {
+    if (splitAvatarData[s] == "") { }
+    else {
+      splitAvatarData[s] = "#" + splitAvatarData[s].split("0x")[1];
+    }
+  }
+  let builder = "";
+  if (splitAvatarData.length == 64) {
+    builder = '<div data-avatarid="' + avatarItem.id + '" class="account-avatar-canvas ' + (is_selected ? "selected-avatar" : "") + '"><div class="avatar-account-box">';
+  } else {
+    builder = '<div data-avatarid="' + avatarItem.id + '" class="account-avatar-canvas large ' + (is_selected ? "selected-avatar" : "") + '"><div class="avatar-account-box">';
+  }
+  for (var i = 0; i < splitAvatarData.length; i++) {
+    if (splitAvatarData.length == 64) {
+      builder += '<div class="md-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
+    } else {
+      builder += '<div class="lg-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
+    }
+  }
+  builder += '</div><div class="avatar-box"><span class="rank-levels">' + avatarItem.highestLevel + '.</span><span class="rank-words">' + avatarItem.correctWordTotal + '</span><span class="mint-ids">' + avatarItem.id + '</span><div class="truncate">' + avatarItem.address.split(NEAR_NETWORK_NAME)[0] + '</div></div>';
+
+  builder += '<div class="descriptions">' + avatarItem.description + '</div>';
   builder += '</div>';
 
   return builder;
@@ -1206,7 +1486,7 @@ generateDisplayAvatar();
 generateAvatarCanvas();
 watchAvatarGenerator();
 function generateAvatarCanvas() {
-  for (var k = 0; k < 64; k++) {
+  for (var k = 0; k < 132; k++) {
     q("#avatar-canvas").innerHTML += '<div class="pixel"></div>';
   }
 };
@@ -1228,9 +1508,12 @@ function watchAvatarGenerator() {
     currentAvatarPallet.thesePalletChoices.push(all_pallets.children[i]);
     let new_random_colour = randomColor();
     if (i == 0) {
+      all_pallets.children[i].style.backgroundColor = "";
+      all_pallets.children[i].dataset.color = "";
+    } else if (i == all_pallets.children.length - 2) {
       all_pallets.children[i].style.backgroundColor = "#ffffff";
       all_pallets.children[i].dataset.color = "#ffffff";
-    } else if (i == 1) {
+    } else if (i == all_pallets.children.length - 1) {
       all_pallets.children[i].style.backgroundColor = "#000000";
       all_pallets.children[i].dataset.color = "#000000";
     } else {
@@ -1257,26 +1540,25 @@ function watchPixelsForAvatar() {
 
 function watchDonationButton() {
   q("#mint-character-button").addEventListener("click", function () {
-    //console.log("clicked");
     let avatar_canvas = document.querySelector("#avatar-canvas");
     let newArray = [];
     for (var i = 0; i < avatar_canvas.children.length; i++) {
       newArray.push(avatar_canvas.children[i].style.backgroundColor);
     }
     PIXELS_TO_SUBMIT_FOR_AVATAR = newArray;
-    //console.log(PIXELS_TO_SUBMIT_FOR_AVATAR);
     mintAvatar();
   });
 
 
 };
 
+
 async function mintAvatar() {
   let pixels_to_hex = convertToHex(PIXELS_TO_SUBMIT_FOR_AVATAR).toString();
   var to_save_data = LZUTF8.compress(pixels_to_hex, { outputEncoding: "StorageBinaryString" });
   let description_save = LZUTF8.compress(sanitize(q("#new-avatar-description").value), { outputEncoding: "StorageBinaryString" });
-  let result = await contract.mintAvatar({ incomingAvatarData: to_save_data.toString(), description: description_save.toString() }, GAS_TO_ATTACH, utils.format.parseNearAmount("3"));
-  //console.log(result);
+  let result = await contract.mintAvatar({ incomingAvatarData: to_save_data.toString(), description: description_save.toString() }, GAS_TO_ATTACH, GAME_REWARDS_STATE_IN_NEAR.avatarPrice);
+  console.log(result);
 };
 
 function saveAvatar() {
@@ -1285,34 +1567,51 @@ function saveAvatar() {
     AVATAR.push(avatar_canvas[i].style.backgroundColor);
   }
 }
-function watchMuralSorting() {
-  if (!SET_SORTING_WATCHERS_ONCE) {
-    SET_SORTING_WATCHERS_ONCE = true;
-    q("#rank-sort").addEventListener("click", function () {
-      rankSorting(".rank-levels");
+
+function watchMarketSorting() {
+  if (!SET_MARKET_SORT_WATCHERS_ONCE) {
+    SET_MARKET_SORT_WATCHERS_ONCE = true;
+    q("#rank-sort-market").addEventListener("click", function () {
+      console.log("click");
+      rankSorting(".rank-levels", "market-container");
     });
-    q("#words-sort").addEventListener("click", function () {
-      rankSorting(".rank-words");
+    q("#words-sort-market").addEventListener("click", function () {
+      rankSorting(".rank-words", "market-container");
     });
-    q("#mint-ids-sort").addEventListener("click", function () {
-      //console.log("click");
-      rankSorting(".mint-ids");
+    q("#mint-ids-sort-market").addEventListener("click", function () {
+      rankSorting(".mint-ids", "market-container");
+    });
+    q("#price-sort-market").addEventListener("click", function () {
+      rankSorting(".market-price", "market-container");
     });
   }
 };
 
-function rankSorting(sort_by) {
+function watchMuralSorting() {
+  if (!SET_SORTING_WATCHERS_ONCE) {
+    SET_SORTING_WATCHERS_ONCE = true;
+    q("#rank-sort").addEventListener("click", function () {
+      rankSorting(".rank-levels", "mural");
+    });
+    q("#words-sort").addEventListener("click", function () {
+      rankSorting(".rank-words", "mural");
+    });
+    q("#mint-ids-sort").addEventListener("click", function () {
+      rankSorting(".mint-ids", "mural");
+    });
+  }
+};
 
-  let sortingCategories = ["mural"];
+function rankSorting(sort_by, item) {
 
-  //for (var k = 0; k < sortingCategories.length; k++) {
-  var toSort = q("#mural").children;
-  //console.log(toSort);
+  let sortingCategories = [item];
+
+  var toSort = q("#" + item).children;
   toSort = Array.prototype.slice.call(toSort, 0);
+
   toSort.sort(function (a, b) {
     var a_current_percents = a.querySelector(sort_by);
     var b_current_percents = b.querySelector(sort_by);
-    //console.log(a_current_percents);
     var aord = a_current_percents.innerHTML;
     var bord = b_current_percents.innerHTML;
     if (sort_by == ".mint-ids") {
@@ -1322,13 +1621,11 @@ function rankSorting(sort_by) {
     }
   });
 
-  var parent = q("#mural");
+  var parent = q("#" + item);
   parent.innerHTML = "";
-  //console.log("Cleared");
   for (var i = 0, l = toSort.length; i < l; i++) {
     parent.appendChild(toSort[i]);
   }
-  //}
 }
 function sanitize(string) {
   const map = {
@@ -1342,33 +1639,154 @@ function sanitize(string) {
   const reg = /[&<>"'/]/ig;
   return string.replace(reg, (match) => (map[match]));
 }
+function availableRewardsWatcher() {
+  q("#eligible-rewards").addEventListener("click", function () {
+    if (!IS_DISPLAYING_PAYRATE) {
+      IS_DISPLAYING_PAYRATE = true;
+      q("#eligible-rewards").innerHTML = "Pay rate " + GAME_REWARDS_STATE_IN_NEAR.payRate + " XGC/word";
+      setTimeout(function () {
+        q("#eligible-rewards").innerHTML = GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards + " XGC available";
+        IS_DISPLAYING_PAYRATE = false;
+      }, TIMEOUT_PROCESSING_WORDS_DELAY);
+    }
+  });
+};
+
+function withdrawalWatcher() {
+  function withdrawalProcess() {
+    if (!IS_WITHDRAWING) {
+      IS_WITHDRAWING = true;
+      withdrawRewards(function () {
+        IS_WITHDRAWING = false;
+        WITHDRAWAL_BUTTON_PROCESSING = false;
+        q("#pending-rewards-total").innerHTML = "Withdrawal completed";
+        q("#earned-rewards-withdrawal").innerHTML = "Withdrawal completed";
+      });
+    }
+  };
+  q("#pending-rewards-total").addEventListener("click", function () {
+    if (!WITHDRAWAL_BUTTON_PROCESSING) {
+      WITHDRAWAL_BUTTON_PROCESSING = true;
+      if (parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards) >= parseFloat(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount)) {
+        q("#pending-rewards-total").innerHTML = "Withdrawing...";
+        withdrawalProcess();
+      } else {
+        q("#pending-rewards-total").innerHTML = "Minimum " + GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount / XGC_DECIMALS + " XGC";
+        setTimeout(function () {
+          q("#pending-rewards-total").innerHTML = "+ " + (ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards / XGC_DECIMALS).toFixed(XGC_DECIMAL_PLACES) + " XGC ";
+          WITHDRAWAL_BUTTON_PROCESSING = false;
+        }, TIMEOUT_PROCESSING_WORDS_DELAY);
+      }
+    }
+  });
+
+  q("#earned-rewards-withdrawal").addEventListener("click", function () {
+    if (!WITHDRAWAL_BUTTON_PROCESSING) {
+      WITHDRAWAL_BUTTON_PROCESSING = true;
+      if (parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].reward) >= parseFloat(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount)) {
+        q("#earned-rewards-withdrawal").innerHTML = "Withdrawing...";
+        withdrawalProcess();
+      } else {
+        q("#earned-rewards-withdrawal").innerHTMl = "Need minimum of " + GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount + " N";
+        setTimeout(function () {
+          q("#earned-rewards-withdrawal").innerHTMl = "+ " + parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards / XGC_DECIMALS).toFixed(XGC_DECIMAL_PLACES) + " N";
+          WITHDRAWAL_BUTTON_PROCESSING = false;
+        }, TIMEOUT_PROCESSING_WORDS_DELAY);
+      }
+    }
+  });
+};
+
+function removeListingWatcher() {
+  q("#remove-this-listing-button").addEventListener("click", function () {
+    if (!IS_UPDATING_ORDER) {
+      IS_UPDATING_ORDER = true;
+      let orderForAVatarId = getOrderForAvatarId(CURRENT_AVATAR_ID);
+      if (orderForAVatarId == false) {
+        q("#remove-this-listing-button").innerHTML = "No order for this avatar.";
+        q("#remove-this-listing-button").classList.add("hide");
+      } else {
+        q("#remove-this-listing-button").innerHTML = "Removing from market...";
+        removeThisOrder(function () {
+          q("#remove-this-listing-button").innerHTML = "Removed";
+          IS_UPDATING_ORDER = false;
+          buildMarket();
+        });
+      }
+    }
+  });
+};
+
+function setAskingPriceWatcher() {
+  q("#update-market-price").addEventListener("click", function () {
+    if (!IS_UPDATING_ORDER) {
+      if (ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards >= ACTION_FEE) {
+        IS_UPDATING_ORDER = true;
+        let orderForAVatarId = getOrderForAvatarId(CURRENT_AVATAR_ID);
+        if (orderForAVatarId == false) {
+          q("#update-market-price").innerHTML = "Updating to market...";
+          setForSale(sanitize(q("#update-market-price-input").value), function () {
+            q("#update-market-price").innerHTML = "Updated to market";
+            IS_UPDATING_ORDER = false;
+            getPublicOrders();
+          });
+        } else {
+          q("#update-market-price").innerHTML = "Updating listing...";
+          updateThisOrder(CURRENT_AVATAR_ID, true, sanitize(q("#update-market-price-input").value), function () {
+            console.log("updated listing");
+            q("#update-market-price").innerHTML = "Updated on market";
+            IS_UPDATING_ORDER = false;
+            getPublicOrders();
+          });
+        }
+      } else {
+        q("#update-market-price").classList.add("red");
+        q("#update-market-price").classList.remove("green");
+        q("#update-market-price").innerHTML = "Requires minimum fee of " + ACTION_FEE / XGC_DECIMALS + " XGC";
+        setTimeout(function () {
+          q("#update-market-price").classList.remove("red");
+          q("#update-market-price").classList.add("green");
+          q("#update-market-price").innerHTML = "Set asking price for 1 XGC";
+          IS_UPDATING_ORDER = false;
+        }, TIMEOUT_PROCESSING_WORDS_DELAY);
+      }
+    }
+  });
+};
 
 function updateDescriptionWatcher() {
 
   q("#update-description").addEventListener("click", function () {
     if (!IS_UPDATING_DESCRIPTION) {
-      q("#update-description").innerHTML = "updating...";
+      q("#update-description").innerHTML = "Updating...";
       IS_UPDATING_DESCRIPTION = true;
-      let new_description_save = LZUTF8.compress(sanitize(q("#update-avatar-description").value), { outputEncoding: "StorageBinaryString" });
+      if (ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards >= ACTION_FEE) {
 
-      contract.updateAvatarDescription({ _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX), _description: new_description_save })
-        .then(result => {
+        let new_description_save = LZUTF8.compress(sanitize(q("#update-avatar-description").value), { outputEncoding: "StorageBinaryString" });
 
-          q("#update-description").innerHTML = "updated";
+        contract.updateAvatarDescription({ _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX), _description: new_description_save })
+          .then(result => {
 
-          DECOMPRESSED_AVATAR_DESCRIPTIONS[CURRENT_AVATAR_INDEX] = sanitize(q("#update-avatar-description").value);
-          //NEED TO FIX
-
-          //ALL_AVATAR_DATA.descriptions[CURRENT_AVATAR_INDEX] = new_description_save;
-          setTimeout(function () {
-            q("#update-description").innerHTML = "Update description";
-            IS_UPDATING_DESCRIPTION = false;
-            buildMural();
-            generateCurrentAvatar();
-            watchAvatarSelection();
-          }, 100);
-          //console.log(result);
-        });
+            q("#update-description").innerHTML = "updated";
+            setTimeout(function () {
+              q("#update-description").innerHTML = "Update description";
+              IS_UPDATING_DESCRIPTION = false;
+              buildMural();
+              generateCurrentAvatar();
+              watchAvatarSelection();
+            }, 100);
+          });
+      } else {
+        q("#update-description").classList.add("red");
+        q("#update-description").classList.remove("green");
+        q("#update-description").innerHTML = "Requires minimum fee of " + ACTION_FEE / XGC_DECIMALS + " XGC";
+        setTimeout(function () {
+          q("#update-description").classList.remove("red");
+          q("#update-description").classList.add("green");
+          q("#update-description").innerHTML = "Update description for 1 XGC";
+          IS_UPDATING_DESCRIPTION = false;
+        }, TIMEOUT_PROCESSING_WORDS_DELAY);
+      }
     }
   });
 }
