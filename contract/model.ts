@@ -156,9 +156,6 @@ export class OrderForUser {
   }
 }
 
-export class RewardsForUser {
-
-}
 
 export class GameRewardsState {
   payRate: u128;
@@ -167,16 +164,34 @@ export class GameRewardsState {
   currentEligibleRewards: u128;
   marketRoyalty: u128;
   avatarPrice: u128;
+  maxAvatars: u32;
+  totalPaidOut: u128;
+  totalFeesEarned: u128;
+  actionFee: u128;
+  marketVolume: u128;
 
-  constructor(_pay_rate: u128, _minimum_withdrawal_amount: u128, _withdrawal_fee: u128) {
-    this.payRate = _pay_rate;
-    this.minimumWithdrawalAmount = _minimum_withdrawal_amount;
-    this.withdrawalFee = _withdrawal_fee;
+  constructor() {
+    this.payRate = u128.from("200000000000000000000");
+    this.minimumWithdrawalAmount = u128.from("20000000000000000000000");
+    this.withdrawalFee = u128.from("10000000000000000000000");
     this.currentEligibleRewards = u128.from("0");
-    this.marketRoyalty = u128.from("50000000000000000000000");
+    this.marketRoyalty = u128.from("250000000000000000000000");
     this.avatarPrice = u128.from("3000000000000000000000000");
+    this.actionFee = u128.from("10000000000000000000000");
+    this.maxAvatars = 50;
+    this.totalPaidOut = u128.from("0");
+    this.totalFeesEarned = u128.from("0");
+    this.marketVolume = u128.from("0");
   }
-
+  increaseTotalPaidOut(_newAdditionalPaidOut: u128): void {
+    this.totalPaidOut = u128.add(this.totalPaidOut, _newAdditionalPaidOut);
+  }
+  increaseTotalFeesEarned(_newAdditionalFeesEarned: u128): void {
+    this.totalFeesEarned = u128.add(this.totalFeesEarned, _newAdditionalFeesEarned);
+  }
+  increaseMarketVolume(_newAdditionalIncrease: u128): void {
+    this.marketVolume = u128.add(this.marketVolume, _newAdditionalIncrease);
+  }
   updateRewardsState(_pay_rate: u128, _minimum_withdrawal_amount: u128, _withdrawal_fee: u128): void {
     this.payRate = _pay_rate;
     this.minimumWithdrawalAmount = _minimum_withdrawal_amount;
@@ -206,14 +221,10 @@ export class GameRewardsState {
   setAvatarPrice(_price: u128): void {
     this.avatarPrice = _price;
   }
-}
-
-export class GetBalanceArgs {
-  account_id: string;
-}
-
-export class FtTransferArgs {
-  receiver_id: string;
-  amount: string;
-  memo: string
+  setMinimumWithdrawalAmount(_amount: u128): void {
+    this.minimumWithdrawalAmount = _amount;
+  }
+  setMaxAvatars(_amount: u32): void {
+    this.maxAvatars = _amount;
+  }
 }
