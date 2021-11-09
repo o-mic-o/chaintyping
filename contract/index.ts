@@ -3,9 +3,9 @@
 import { context, logging, storage, RNG, u128, ContractPromiseBatch, PersistentUnorderedMap } from 'near-sdk-as';
 import { Player, ChainAvatarsForUser, Game, OrderForUser, GameRewardsState } from './model';
 
-const OWN = "mic.testnet";
+const OWN = "mic.near";
 const GAME_OWN = "simplegames.near";
-const DAO = "chaintyping-test2.sputnikv2.testnet";
+//const DAO = "chaintyping-test2.sputnikv2.testnet";
 
 const MAX_AVATARS_ABSOLUTE_LIMIT = <u32>1000;
 const MAX_WPM = 300;
@@ -17,18 +17,18 @@ const players = new PersistentUnorderedMap<string, Player>("p");
 const orders = new PersistentUnorderedMap<string, Array<OrderForUser>>("o");
 const gameRewardsState = new PersistentUnorderedMap<string, GameRewardsState>("g");
 
-export function getPlayers(start:u32, end:u32): Array<Player> { return players.values(start, end); };
+export function getPlayers(start: u32, end: u32): Array<Player> { return players.values(start, end); };
 export function getAvatars(start: u32, end: u32): Array<ChainAvatarsForUser> { return avatars.values(start, end); };
 export function getOrders(start: u32, end: u32): Array<Array<OrderForUser>> { return orders.values(start, end); };
 
 export function getGameRewardsState(): Array<GameRewardsState> { return gameRewardsState.values(0, 1) };
 
-export function initContract(wordsList: string, mintCount: u32) : void {
+export function initContract(wordsList: string, mintCount: u32): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
   storage.set<Game>("game", new Game(mintCount, wordsList))
 };
 
-export function initPlayerRewards() : void {
+export function initPlayerRewards(): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
 
   let all_players = players.values();
@@ -43,9 +43,10 @@ export function setWordList(wordsIpfsLocation: string): void { // Must run first
   let game = storage.get<Game>("game");
   if (game != null) {
     game.updateWordsList(wordsIpfsLocation);
+    storage.set<Game>("game", game)
   }
 };
-export function setWithdrawalFee(_fee: string) : void {
+export function setWithdrawalFee(_fee: string): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   if (reward_state != null) {
@@ -53,7 +54,7 @@ export function setWithdrawalFee(_fee: string) : void {
     gameRewardsState.set("gameRewardsState", reward_state);
   }
 };
-export function setMinimumWithdrawalAmount(_amount: string) : void {
+export function setMinimumWithdrawalAmount(_amount: string): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   if (reward_state != null) {
@@ -80,7 +81,7 @@ export function setPayRate(_pay_rate: string): void {
 
 }
 
-export function modifyRewardStates(_minimum_balance:string, _pay_rate:string, _minimum_withdrawal_amount:string, _withdrawal_fee: string) : void {
+export function modifyRewardStates(_minimum_balance: string, _pay_rate: string, _minimum_withdrawal_amount: string, _withdrawal_fee: string): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN));
 
   let reward_state = gameRewardsState.get("gameRewardsState");
@@ -93,7 +94,7 @@ export function modifyRewardStates(_minimum_balance:string, _pay_rate:string, _m
   }
 }
 
-export function depositForRewards() : void {
+export function depositForRewards(): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Only owner may replenish deposits for game.");
   let value = context.attachedDeposit;
 
@@ -105,7 +106,7 @@ export function depositForRewards() : void {
   }
 };
 
-export function reduceEligibleRewards(value: string) : void {
+export function reduceEligibleRewards(value: string): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Only owner may reduce availibility for game.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   assert(reward_state != null, "Reward state was null.");
@@ -124,7 +125,7 @@ export function withdrawRewards(): void {
     let reward_state = gameRewardsState.get("gameRewardsState");
     assert(reward_state != null, "Reward state was null.");
 
-    if (reward_state != null){
+    if (reward_state != null) {
       let amountToWithdraw = thisPlayer.rewards;
       let differenceToWithdraw = u128.sub(thisPlayer.rewards, reward_state.withdrawalFee);
       assert(amountToWithdraw >= reward_state.minimumWithdrawalAmount, "Must be greater than minimum.");
@@ -140,7 +141,7 @@ export function withdrawRewards(): void {
   }
 };
 
-export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32) : boolean {
+export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32): boolean {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
   let getSpecificAvatarsOfUser = avatars.get(_username);
   if (getSpecificAvatarsOfUser != null) {
@@ -151,8 +152,23 @@ export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32) : bo
     return false;
   }
 };
-
-export function moderatorRemoveListing(_username: string, _avatarId: u32) : void {
+export function moderatorResetBlockList(_username: string): void {
+  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
+  let getSpecificAvatarsOfUser = avatars.get(_username);
+  if (getSpecificAvatarsOfUser != null) {
+    getSpecificAvatarsOfUser.resetBlockList();
+    avatars.set(_username, getSpecificAvatarsOfUser);
+  }
+};
+export function moderatorBlockListAvatar(_username: string, _avatarIndex: u32): void {
+  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
+  let getSpecificAvatarsOfUser = avatars.get(_username);
+  if (getSpecificAvatarsOfUser != null) {
+    getSpecificAvatarsOfUser.setIsBlockList(_avatarIndex);
+    avatars.set(_username, getSpecificAvatarsOfUser);
+  }
+};
+export function moderatorRemoveListing(_username: string, _avatarId: u32): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove listings from user.");
 
   let theseOrders = orders.get(_username);
@@ -171,7 +187,7 @@ export function moderatorRemoveListing(_username: string, _avatarId: u32) : void
   }
 };
 
-export function moderatorChangeDescription(_username: string, _avatarIndex: u32, _newDescription: string) : void {
+export function moderatorChangeDescription(_username: string, _avatarIndex: u32, _newDescription: string): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate descriptions.");
   let getSpecificAvatarsOfUser = avatars.get(_username);
   if (getSpecificAvatarsOfUser != null) {
@@ -180,7 +196,7 @@ export function moderatorChangeDescription(_username: string, _avatarIndex: u32,
   }
 }
 
-export function setAvatarPrice(_price: string) : void {
+export function setAvatarPrice(_price: string): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
   let game_rewards_state = gameRewardsState.get("gameRewardsState");
   if (game_rewards_state != null) {
@@ -189,7 +205,7 @@ export function setAvatarPrice(_price: string) : void {
   }
 }
 
-export function setMaxAvatars(_amount: u32) : void {
+export function setMaxAvatars(_amount: u32): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
   let game_rewards_state = gameRewardsState.get("gameRewardsState");
   if (game_rewards_state != null) {
@@ -206,29 +222,29 @@ export function mintAvatar(incomingAvatarData: string, description: string): voi
 
   let game = storage.get<Game>("game");
 
-    if (game != null && game_rewards_state != null) {
-      let value = context.attachedDeposit;
-      assert(value >= game_rewards_state.avatarPrice, "Price mismatch.");
+  if (game != null && game_rewards_state != null) {
+    let value = context.attachedDeposit;
+    assert(value >= game_rewards_state.avatarPrice, "Price mismatch.");
 
-      assert(((game.avatarMintCount + 1 <= game_rewards_state.maxAvatars) && (game.avatarMintCount <= MAX_AVATARS_ABSOLUTE_LIMIT)), "Max avatar count reached.");
-      let tryMyAvatars = avatars.get(context.predecessor);
+    assert(((game.avatarMintCount + 1 <= game_rewards_state.maxAvatars) && (game.avatarMintCount <= MAX_AVATARS_ABSOLUTE_LIMIT)), "Max avatar count reached.");
+    let tryMyAvatars = avatars.get(context.predecessor);
 
-      if (tryMyAvatars == null) {
-        let newChainAvatarsForUser = new ChainAvatarsForUser(game.avatarMintCount + 1, context.predecessor, incomingAvatarData, description, 1, 0);
-        avatars.set(context.predecessor, newChainAvatarsForUser);
-      } else {
-        tryMyAvatars.addNewAvatarForThisPlayer(game.avatarMintCount + 1, incomingAvatarData, description, 1, 0);
-        avatars.set(context.predecessor, tryMyAvatars);
-      }
-      game.increaseAvatarMintCount();
-      storage.set("game", game);
+    if (tryMyAvatars == null) {
+      let newChainAvatarsForUser = new ChainAvatarsForUser(game.avatarMintCount + 1, context.predecessor, incomingAvatarData, description, 1, 0);
+      avatars.set(context.predecessor, newChainAvatarsForUser);
+    } else {
+      tryMyAvatars.addNewAvatarForThisPlayer(game.avatarMintCount + 1, incomingAvatarData, description, 1, 0);
+      avatars.set(context.predecessor, tryMyAvatars);
     }
+    game.increaseAvatarMintCount();
+    storage.set("game", game);
+  }
 
 };
 
 export function getWordsList(): string | null {
   let game = storage.get<Game>("game");
-  if (game != null){
+  if (game != null) {
     return game.wordsList;
   } else {
     return "";
@@ -265,17 +281,17 @@ export function getLevelWords(level: u32): Array<u32> {
   return resultList;
 }
 
-export function updateLevel(level: u32) : void {
+export function updateLevel(level: u32): void {
   let avatar = avatars.get(context.predecessor);
   assert(avatar != null, "Must own an avatar to play.");
   let thisPlayer = players.get(context.predecessor);
 
   if (thisPlayer == null) {
     assert(level == 1, "l");
-    players.set(context.predecessor, new Player(0, 0, 1, context.predecessor))
+    players.set(context.predecessor, new Player(0, 0, 1, context.predecessor, context.blockIndex))
   } else {
     if (level != 1) {
-      assert(level == thisPlayer.previousLevelCompleted + 1, "Must go in order of levels.");
+      assert(level == thisPlayer.previousLevelCompleted + 1, "Must go in order of levels."); // + 1
     }
     thisPlayer.updateLevel(level);
     players.set(context.predecessor, thisPlayer);
@@ -294,6 +310,7 @@ export function submitLastLevelPlayed(level: u32, wpm: u32, accuracy: u32, corre
 
     assert((level == (thisPlayer.previousLevelCompleted)), "Must submit the previous level.");
     thisPlayer.updatePreviousLevelCompleted(wpm, accuracy);
+    thisPlayer.updateBlockIndex(context.blockIndex);
 
     let game_rewards_state = gameRewardsState.get("gameRewardsState");
     assert(game_rewards_state != null, "Reward state was null.");
@@ -331,12 +348,12 @@ export function submitLastLevelPlayed(level: u32, wpm: u32, accuracy: u32, corre
 };
 
 export function getLastLevelPlayed(): u32 {
- let thisPlayer = players.get(context.predecessor);
- if (thisPlayer != null) {
-  return thisPlayer.previousLevelCompleted
- } else {
-   return 0;
- }
+  let thisPlayer = players.get(context.predecessor);
+  if (thisPlayer != null) {
+    return thisPlayer.previousLevelCompleted
+  } else {
+    return 0;
+  }
 };
 
 export function sendDonations(_amountInNear: u128): void {
@@ -349,11 +366,14 @@ export function updateAvatarDescription(_avatarIndex: u32, _description: string)
   let myAvatars = avatars.get(context.predecessor);
   let myPlayer = players.get(context.predecessor);
   let game_rewards_state = gameRewardsState.get("gameRewardsState");
+
   if (myPlayer != null && game_rewards_state != null) {
     assert(myPlayer.rewards >= game_rewards_state.actionFee, "Must satisfy the fee of 0.01 N.");
+
     if (myPlayer.rewards >= game_rewards_state.actionFee) {
       myPlayer.reduceRewards(game_rewards_state.actionFee);
       game_rewards_state.increaseTotalFeesEarned(game_rewards_state.actionFee);
+
       if (myAvatars != null) {
         myAvatars.updateDescription(_avatarIndex, _description);
         avatars.set(context.predecessor, myAvatars);
@@ -362,6 +382,32 @@ export function updateAvatarDescription(_avatarIndex: u32, _description: string)
       }
     }
   }
+};
+
+export function updateAvatarCharacter(_avatarIndex: u32, incomingAvatarData: string): void {
+  let myAvatars = avatars.get(context.predecessor);
+  assert(myAvatars != null, "You don't have any avatars.");
+
+  let myPlayer = players.get(context.predecessor);
+  let game_rewards_state = gameRewardsState.get("gameRewardsState");
+
+  if (myPlayer != null && game_rewards_state != null) {
+    logging.log("Checking satisfy fee");
+    assert(myPlayer.rewards >= game_rewards_state.updateCharacterFee, "Must satisfy the fee of 0.02 N.");
+    myPlayer.reduceRewards(game_rewards_state.updateCharacterFee);
+    game_rewards_state.increaseTotalFeesEarned(game_rewards_state.updateCharacterFee);
+
+    if (myAvatars != null) {
+      myAvatars.updateCharacter(_avatarIndex, incomingAvatarData);
+      myAvatars.removeIsBlockList(_avatarIndex);
+      logging.log("updated character");
+      avatars.set(context.predecessor, myAvatars);
+      players.set(context.predecessor, myPlayer);
+      gameRewardsState.set("gameRewardsState", game_rewards_state);
+    }
+
+  }
+
 };
 
 export function importAvatar(addressForOwner: string, incomingAvatarData: string, description: string, level: u32, correctWords: u32): void {
@@ -380,15 +426,28 @@ export function importAvatar(addressForOwner: string, incomingAvatarData: string
       game.increaseAvatarMintCount();
       storage.set("game", game);
     }
+  } else {
+    let game = storage.get<Game>("game");
+    let game_rewards_state = gameRewardsState.get("gameRewardsState");
+    if (game != null && game_rewards_state != null) {
+      assert(((game.avatarMintCount + 1 <= game_rewards_state.maxAvatars) && (game.avatarMintCount <= MAX_AVATARS_ABSOLUTE_LIMIT)), "Max avatar count reached.");
+      thisAvatar.addNewAvatarForThisPlayer(game.avatarMintCount + 1, incomingAvatarData, description, level, correctWords);
+      avatars.set(addressForOwner, thisAvatar);
+
+      game.increaseAvatarMintCount();
+      storage.set("game", game);
+    }
   }
 }
 
-export function setForSale(_avatarId: u32, price: string) : void {
+export function setForSale(_avatarId: u32, price: string): void {
   let myAvatars = avatars.get(context.predecessor);
   assert(myAvatars != null, "You don't have any avatars to sell.");
 
   if (myAvatars != null) {
     assert(myAvatars.isOwnedByMe(_avatarId), "This is not owned by you.");
+    let thisIndex = myAvatars.getPersonalIndex(_avatarId);
+    assert(!myAvatars.isOnBlockList(thisIndex), "Unable to create order when on block list.");
   }
 
   let myPlayer = players.get(context.predecessor);
@@ -440,7 +499,7 @@ export function setForSale(_avatarId: u32, price: string) : void {
   }
 };
 
-export function updateForSale(_avatarId: u32, isForSale: boolean, price: string) : void {
+export function updateForSale(_avatarId: u32, isForSale: boolean, price: string): void {
   let myAvatars = avatars.get(context.predecessor);
   assert(myAvatars != null, "You don't have any avatars to sell.");
 
@@ -451,6 +510,8 @@ export function updateForSale(_avatarId: u32, isForSale: boolean, price: string)
 
     if (myAvatars != null) {
       assert(myAvatars.isOwnedByMe(_avatarId), "This is not owned by you.");
+      let thisIndex = myAvatars.getPersonalIndex(_avatarId);
+      assert(!myAvatars.isOnBlockList(thisIndex), "Unable to create order when on block list.");
     }
 
     let theseOrders = orders.get(context.predecessor);
@@ -475,7 +536,7 @@ export function updateForSale(_avatarId: u32, isForSale: boolean, price: string)
 
 };
 
-export function removeListing(_avatarId: u32) : void {
+export function removeListing(_avatarId: u32): void {
   let myAvatars = avatars.get(context.predecessor);
   assert(myAvatars != null, "You don't have any avatars to sell.");
 
@@ -497,7 +558,7 @@ export function removeListing(_avatarId: u32) : void {
   }
 };
 
-export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32) : void {
+export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32): void {
   let myAvatars = avatars.get(context.predecessor);
 
   if (myAvatars != null) {
@@ -512,6 +573,7 @@ export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32) :
   if (ownersAvatars != null) {
     thisOwnersAvatarIndex = ownersAvatars.getPersonalIndex(_avatarIdToBuy);
     assert(thisOwnersAvatarIndex != -1, "Avatar was not found for the true owner.");
+    assert(!ownersAvatars.isOnBlockList(thisOwnersAvatarIndex), "Unable to buy order when item is on block list.");
   }
 
   let valueDeposited = context.attachedDeposit;
@@ -528,21 +590,21 @@ export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32) :
         assert(ordersOfOwner[i].priceForSale == valueDeposited, "Must be the correct amount, funds should return.");
 
         let reward_state = gameRewardsState.get("gameRewardsState");
-        if (reward_state != null){
+        if (reward_state != null) {
 
           let differenceWithRoyalty = u128.sub(valueDeposited, u128.from(reward_state.marketRoyalty));
           logging.log("Difference with royalty: " + differenceWithRoyalty.toString());
           let valueToSendToTrueOwner = differenceWithRoyalty;
 
           if (myAvatars == null) { // Add new avatar to the new owner.
-            if (ownersAvatars != null){
+            if (ownersAvatars != null) {
               let newChainAvatarsForUser = new ChainAvatarsForUser(_avatarIdToBuy, context.predecessor, ownersAvatars.datas[thisOwnersAvatarIndex], ownersAvatars.descriptions[thisOwnersAvatarIndex], ownersAvatars.highestLevels[thisOwnersAvatarIndex], ownersAvatars.correctWordTotals[thisOwnersAvatarIndex]);
               avatars.set(context.predecessor, newChainAvatarsForUser);
               ownersAvatars.removeThisAvatar(thisOwnersAvatarIndex);
               avatars.set(addressOfTrueOwner, ownersAvatars);
             }
           } else {
-            if (ownersAvatars != null){
+            if (ownersAvatars != null) {
               myAvatars.addNewAvatarForThisPlayer(_avatarIdToBuy, ownersAvatars.datas[thisOwnersAvatarIndex], ownersAvatars.descriptions[thisOwnersAvatarIndex], ownersAvatars.highestLevels[thisOwnersAvatarIndex], ownersAvatars.correctWordTotals[thisOwnersAvatarIndex]);
               avatars.set(context.predecessor, myAvatars);
               ownersAvatars.removeThisAvatar(thisOwnersAvatarIndex);

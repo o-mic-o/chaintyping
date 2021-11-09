@@ -9,6 +9,7 @@ export class ChainAvatarsForUser {
   datas: Array<string>;
   correctWordTotals: Array<u64>;
   descriptions: Array<string>;
+  isBlockList: Array<boolean>;
 
   constructor(_id: u32, _address: string, _data: string, _description: string, _highestLevel: u32, _correctWordTotal: u64) {
     this.ids = new Array<u32>();
@@ -22,8 +23,18 @@ export class ChainAvatarsForUser {
     this.correctWordTotals.push(_correctWordTotal);
     this.descriptions = new Array<string>();
     this.descriptions.push(_description);
+    this.isBlockList = new Array<boolean>();
+    this.isBlockList.push(false);
   }
-
+  setIsBlockList(_avatarIndex: u32): void {
+    this.isBlockList[_avatarIndex] = true;
+  }
+  removeIsBlockList(_avatarIndex: u32): void {
+    this.isBlockList[_avatarIndex] = false;
+  }
+  isOnBlockList(_avatarIndex: u32): boolean {
+    return this.isBlockList[_avatarIndex];
+  }
   setHighestLevel(_avatarIndex: u32, _level: u32): void {
     if (_level > this.highestLevels[_avatarIndex]) { this.highestLevels[_avatarIndex] = _level; }
   }
@@ -35,6 +46,9 @@ export class ChainAvatarsForUser {
   updateDescription(_avatarIndex: u32, _description: string): void {
     this.descriptions[_avatarIndex] = _description;
   }
+  updateCharacter(_avatarIndex: u32, _data: string): void {
+    this.datas[_avatarIndex] = _data;
+  }
 
   addNewAvatarForThisPlayer(_id: u32, _data: string, _description: string, _highestLevel: u32, _correctWordTotal: u64): void {
     this.ids.push(_id);
@@ -42,6 +56,7 @@ export class ChainAvatarsForUser {
     this.descriptions.push(_description);
     this.highestLevels.push(_highestLevel);
     this.correctWordTotals.push(_correctWordTotal);
+    this.isBlockList.push(false);
   }
   removeThisAvatar(_avatarIndex: u32): void {
     this.ids.splice(_avatarIndex, 1);
@@ -49,6 +64,14 @@ export class ChainAvatarsForUser {
     this.descriptions.splice(_avatarIndex, 1);
     this.highestLevels.splice(_avatarIndex, 1);
     this.correctWordTotals.splice(_avatarIndex, 1);
+    this.isBlockList.splice(_avatarIndex, 1);
+  }
+
+  resetBlockList(): void {
+    this.isBlockList = new Array<boolean>();
+    for (var i = 0; i < this.ids.length; i++) {
+      this.isBlockList.push(false);
+    }
   }
 
   isOwnedByMe(_avatarId: u32): boolean {
@@ -68,21 +91,25 @@ export class ChainAvatarsForUser {
 export class Player {
   previousWpm: u32;
   previousAccuracy: u32;
-  previousWordsList: Array<u32>;
   previousLevelCompleted: u32;
 
   address: string;
   wordCountEligibleForRewards: u64;
   rewards: u128;
+  lastBlockIndex: u64;
 
-  constructor(_wpm: u32, _accuracy: u32, _previousLevelCompleted: u32, _address: string) {
+  constructor(_wpm: u32, _accuracy: u32, _previousLevelCompleted: u32, _address: string, _lastBlockIndex: u64) {
     this.previousWpm = _wpm;
     this.previousAccuracy = _accuracy;
-    //this.previousWordsList = _wordsList;
     this.previousLevelCompleted = _previousLevelCompleted;
     this.address = _address;
     this.rewards = u128.from("0");
+    this.lastBlockIndex = _lastBlockIndex;
   }
+
+  updateBlockIndex(_newIndex: u64): void {
+    this.lastBlockIndex = _newIndex;
+  };
 
   updatePreviousLevelCompleted(_wpm: u32, _accuracy: u32): void {
     this.previousWpm = _wpm;
@@ -103,11 +130,6 @@ export class Player {
 
   updateLevel(_level: u32): void {
     this.previousLevelCompleted = _level;
-  };
-
-  updateLevelAndWords(_level: u32): void {
-    this.previousLevelCompleted = _level;
-    //this.previousWordsList = _words;
   };
 
 }
@@ -168,6 +190,7 @@ export class GameRewardsState {
   totalPaidOut: u128;
   totalFeesEarned: u128;
   actionFee: u128;
+  updateCharacterFee: u128;
   marketVolume: u128;
 
   constructor() {
@@ -176,8 +199,9 @@ export class GameRewardsState {
     this.withdrawalFee = u128.from("10000000000000000000000");
     this.currentEligibleRewards = u128.from("0");
     this.marketRoyalty = u128.from("250000000000000000000000");
-    this.avatarPrice = u128.from("3000000000000000000000000");
+    this.avatarPrice = u128.from("2000000000000000000000000");
     this.actionFee = u128.from("10000000000000000000000");
+    this.updateCharacterFee = u128.from("20000000000000000000000");
     this.maxAvatars = 50;
     this.totalPaidOut = u128.from("0");
     this.totalFeesEarned = u128.from("0");

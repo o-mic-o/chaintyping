@@ -1,30 +1,29 @@
-const CONTRACT = 'dev-1630283610608-7480166'; // LIVE ON TESTNET 'dev-1629758831278-1504897';
-const NEAR_NETWORK_NAME = ".testnet";
-const XGC_CONTRACT = "testing12345.testnet";
+const CONTRACT = 'chain-typing.simplegames.near';
+const NEAR_NETWORK_NAME = ".near";
+const GAS_TO_ATTACH = 100000000000000;
 
 let game;
-const XGC_DECIMALS = 1000;
+const NEAR_DECIMALS = 4;
 
-let AVATAR_INDEXES = [];
 let ORIGINAL_AVATAR_DATA;
 let PIXELS_TO_SUBMIT_FOR_AVATAR = [];
-let ALL_AVATARS = [];
+let PIXELS_TO_SUBMIT_FOR_UPDATE_CHARACTER = [];
+let IS_UPDATING_CHARACTER = false;
+//let ALL_AVATARS = [];
 let CURRENT_AVATAR_ID = "";
 let IS_LOCKED = false;
 let IS_UPDATING_DESCRIPTION = false;
 let SET_SORTING_WATCHERS_ONCE = false;
-let CURRENT_PLAYER_INDEX;
+let CURRENT_PLAYER_INDEX = "";
 let IN_CURRENT_GAME = false;
-let XGC_DECIMAL_PLACES = 2;
+
 let CURRENT_AVATAR_TO_SUBMIT_INDEX = ""; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
 let ALL_MARKET_DATA = "";
 let IS_UPDATING_ORDER = false;
 let IS_BUYING_PROGRESS = false;
-
 let ALL_PLAYERS = "";
 let CURRENT_ELIGIBLE_AMOUNT = 0;
 let CURRENT_PAY_RATE = "";
-const GAS_TO_ATTACH = 70000000000000;
 let GAME_REWARDS_STATE_IN_NEAR = "";
 let IS_WITHDRAWING = false;
 let IS_DISPLAYING_PAYRATE = false;
@@ -32,9 +31,22 @@ let WITHDRAWAL_BUTTON_PROCESSING = false;
 let TIMEOUT_PROCESSING_WORDS_DELAY = 3000;
 let SET_MARKET_SORT_WATCHERS_ONCE = false;
 let HASH_ID = "";
-let ACTION_FEE = 1000;
+let MAX_AVATARS_REACHED = false;
+let IS_PUBLIC_PLAYERS = true;
+let ALL_PLAYERS_TICKER_SORT = "";
+let START_LEVEL = 1;
 
 function q(input) { return document.querySelector(input); };
+
+function ERROR_MESSAGE(error) {
+  q("#error-notification").classList.remove("hide");
+  q("#error-notification").classList.add("error-visible");
+  q("#display-error-texts").innerHTML = "";
+  q("#display-error-texts").innerHTML = '<h3>An error occured.</h3><h3 style="padding-top:15px;">Please logout then log back in.</h3>';
+  q("#display-error-texts").innerHTML += '<h4 style="padding-top:15px;font-style: italic;">' + error + '</h4>';
+  q("#display-error-texts").innerHTML += '<h3 style="padding-top:15px;" class="red blinking">Click to logout</h3>'
+  ACCESS_KEY_DEPLETED = true;
+}
 function matchingCharArray(word_one, word_two) {
   if (word_one.length == word_two.length) {
     for (var i = 0; i < word_one.length; i++) {
@@ -50,21 +62,23 @@ function matchingCharArray(word_one, word_two) {
     return false;
   }
 }
-q("#contract-link").innerHTML = CONTRACT;
-q("#contract-link-market").innerHTML = CONTRACT;
+//q("#contract-link").innerHTML = CONTRACT;
+//q("#contract-link-market").innerHTML = CONTRACT;
 
 const near = new nearApi.Near({
   keyStore: new nearApi.keyStores.BrowserLocalStorageKeyStore(),
-  networkId: 'testnet',
-  nodeUrl: 'https://rpc.testnet.near.org',
-  walletUrl: 'https://wallet.testnet.near.org'
+  networkId: 'mainnet',
+  nodeUrl: 'https://rpc.mainnet.near.org',
+  walletUrl: 'https://wallet.mainnet.near.org'
 });
 
 const { utils } = nearApi
 
+let ACTION_FEE = utils.format.parseNearAmount("0.01");
+
 const wallet = new nearApi.WalletConnection(near, 'my-app');
 
-const contract = new nearApi.Contract(wallet.account(), CONTRACT, { //'dev-1628898366672-7385992'
+const contract = new nearApi.Contract(wallet.account(), CONTRACT, {
   viewMethods: [
     'getWordsList',
     'getPlayers',
@@ -76,9 +90,11 @@ const contract = new nearApi.Contract(wallet.account(), CONTRACT, { //'dev-16288
   changeMethods: [
     'initContract',
     'initPlayerRewards',
+    'updateAvatarCharacter',
+    'moderatorBlockListAvatar',
+    'moderatorResetBlockList',
 
     'getLevelWords',
-
     'setWordList',
     'mintAvatar',
     'updateLevel',
@@ -100,35 +116,31 @@ const contract = new nearApi.Contract(wallet.account(), CONTRACT, { //'dev-16288
     'withdrawRewards',
     'setPayRate',
     'setRoyalty',
-    'checkXGCBalance',
-    'checkThisContractBalanceXGC',
+    //'checkXGCBalance',
+    //'checkThisContractBalanceXGC',
     'resetRewardState',
     'setAvatarPrice',
-    'reduceEligibleRewards'
+    'setMaxAvatars',
+    'reduceEligibleRewards',
+    'setMinimumWithdrawalAmount',
+    'moderatorChangeDescription'
   ]
 });
 
-const xgcContract = new nearApi.Contract(wallet.account(), XGC_CONTRACT, { //'dev-1628898366672-7385992'
-  viewMethods: [
-    'ft_total_supply',
-    'ft_metadata',
-    'ft_balance_of'
-  ],
-  changeMethods: [
-  ]
-});
 
 const button = q('#sign-in-button');
 
 if (!wallet.isSignedIn()) {
   button.textContent = "Login with NEAR";
   q("#signed-out-flow").classList.remove("hide");
-  getGameRewardsState();
+  getPlayers(function () {
+    getGameRewardsState();
+  });
   getPublicAvatars(function () {
     getPublicOrders();
   });
 
-  getXGCTotalSupply();
+  //getXGCTotalSupply();
 
 } else {
 
@@ -138,12 +150,12 @@ if (!wallet.isSignedIn()) {
     faqItems[i].classList.add("hide");
   }
   displayInnerMenu(false);
-  getGameRewardsState();
+  IS_PUBLIC_PLAYERS = false;
+  getPlayers(function () {
+    getGameRewardsState();
+  });
   signedInProcess();
 
-  getXGCTotalSupply();
-  getXGCMyBalance();
-  getXGCGameBalance();
 }
 
 
@@ -153,11 +165,10 @@ if (window.location.hash != "") {
 
 function hashMapper() {
   if (HASH_ID == "account") {
-    console.log("Account hash!");
     setTimeout(function () {
       q("#account-id").click();
     }, 1);
-  } else if (HASH_ID == "mural") {
+  } else if (HASH_ID == "leaderboard") {
     setTimeout(function () {
       q("#mural-button").click();
     }, 1);
@@ -169,10 +180,16 @@ function hashMapper() {
     setTimeout(function () {
       q("#get-avatar").click();
     }, 1);
-  } else if (HASH_ID == "xgc") {
+  } else if (HASH_ID == "stats") {
     setTimeout(function () {
-      q("#xgc-stats-button").click();
+      q("#game-stats-button").click();
     }, 1);
+  } else if (wallet.isSignedIn()) {
+    q("#mural-button").classList.add("selected");
+  } else {
+    q("#faq").classList.remove("hide");
+    q("#faq-button").classList.add("selected");
+
   }
 }
 hashMapper();
@@ -184,8 +201,9 @@ function displayInnerMenu(isSwitchingFromGame) {
   q("#account-id").classList.remove("hide");
   q("#faq-button").classList.add("hide");
   q("#get-avatar").classList.remove("hide");
+  //q("#game-stats-button").classList.remove("hide");
   q("#account-id").innerHTML = wallet._authData.accountId.split(NEAR_NETWORK_NAME)[0];
-  q("#contract-link").innerHTML = contract.contractId;
+  //q("#contract-link").innerHTML = contract.contractId;
   q("#pending-rewards-total").classList.remove("hide");
 
   if (isSwitchingFromGame) {
@@ -208,6 +226,10 @@ document.getElementById('sign-in-button').addEventListener('click', () => {
         'initContract',
         'initPlayerRewards',
         'setWordList',
+        'updateAvatarCharacter',
+        'moderatorBlockListAvatar',
+        'moderatorResetBlockList',
+
         'mintAvatar',
         'getWordsList',
         'getLevelWords',
@@ -233,11 +255,14 @@ document.getElementById('sign-in-button').addEventListener('click', () => {
         'withdrawRewards',
         'setPayRate',
         'setRoyalty',
-        'checkXGCBalance',
-        'checkThisContractBalanceXGC',
+        //'checkXGCBalance',
+        //'checkThisContractBalanceXGC',
         'resetRewardState',
         'setAvatarPrice',
-        'reduceEligibleRewards'
+        'reduceEligibleRewards',
+        'setMinimumWithdrawalAmount',
+        'moderatorChangeDescription',
+        'setMaxAvatars'
       ]
     });
   }
@@ -257,18 +282,27 @@ function signedInProcess() {
 
   getAvatars(function () {
     getPublicOrders();
-    getPlayers();
     buildMural();
     watchDonationButton();
     withdrawalWatcher();
     availableRewardsWatcher();
     if (!IS_LOCKED) {
       q("#game-launcher").classList.remove("hide");
-      displayCurrentGameAvatar();
       generateCurrentAvatar();
       watchAvatarSelection();
+      q("#view-current-user-settings").addEventListener("click", function () {
+        let user_settings = q("#current-user-settings");
+        if (user_settings.classList.contains("hide")) {
+          q("#current-user-settings").classList.remove("hide");
+          q("#view-current-user-settings").innerHTML = "Hide character settings";
+        } else {
+          q("#current-user-settings").classList.add("hide");
+          q("#view-current-user-settings").innerHTML = "View character settings";
+        }
+      });
       q("#update-description").classList.remove("hide");
       q("#update-market-price-input").classList.remove("hide");
+      q("#choose-avatar-update").classList.remove("hide");
       q("#update-market-price").classList.remove("hide");
       updateDescriptionWatcher();
       setAskingPriceWatcher();
@@ -279,6 +313,8 @@ function signedInProcess() {
       q("#update-description").classList.add("hide");
       q("#update-market-price-input").classList.add("hide");
       q("#update-market-price").classList.add("hide");
+      q("#choose-avatar-update").classList.add("hide");
+      q("#view-current-user-settings").classList.add("hide");
     }
   });
 }
@@ -287,7 +323,10 @@ function buildMural() {
   q("#mural").innerHTML = "";
 
   for (var i = 0; i < DECOMPRESSED_AVATARS.length; i++) {
-    q("#mural").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[i], false);
+    if (DECOMPRESSED_AVATARS[i].isBlockList) { }
+    else {
+      q("#mural").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[i], false);
+    }
   }
   watchMuralSorting();
   rankSorting(".rank-words", "mural");
@@ -299,7 +338,6 @@ function buildMarket() {
   for (var i = 0; i < ALL_DECOMPRESSED_MARKET_DATA.length; i++) {
     if (!ALL_DECOMPRESSED_MARKET_DATA[i].forSale) { }
     else {
-      console.log(ALL_DECOMPRESSED_MARKET_DATA[i]);
       q("#market-container").innerHTML += buildMarketCanvas(ALL_DECOMPRESSED_MARKET_DATA[i], findAvatarFromId(ALL_DECOMPRESSED_MARKET_DATA[i].avatarId));
     }
   }
@@ -341,7 +379,24 @@ function proceedToGame() {
       q("#signed-out-flow").classList.add("hide");
       q("#choose-avatar").classList.add("hide");
       q("#market-box").classList.add("hide");
-      q("#xgc-stats").classList.add("hide");
+      q("#game-stats").classList.add("hide");
+      q("#faq").classList.add("hide");
+      START_LEVEL = 1;
+      q("#words").innerHTML = "";
+      q("#notification").classList.remove("hide");
+      q("#game-start-lost-overlay").classList.remove("hide");
+      bootUpGame();
+    });
+    q("#game-launcher-resume").addEventListener("click", function () {
+      q("#signed-out-flow").classList.add("hide");
+      q("#choose-avatar").classList.add("hide");
+      q("#market-box").classList.add("hide");
+      q("#game-stats").classList.add("hide");
+      q("#faq").classList.add("hide");
+      q("#words").innerHTML = "";
+      q("#notification").classList.remove("hide");
+      q("#game-start-lost-overlay").classList.remove("hide");
+      START_LEVEL = ALL_PLAYERS[CURRENT_PLAYER_INDEX].previousLevelCompleted + 1;
       bootUpGame();
     });
   }
@@ -356,64 +411,60 @@ function importAvatar(address, data, description, incomingLevel, incomingCorrect
       console.log(result);
     });
 }
-
+function importAvatarCompressed(address, data, description, incomingLevel, incomingCorrectWords) {
+  contract.importAvatar({ addressForOwner: address, incomingAvatarData: data, description: description, level: incomingLevel, correctWords: incomingCorrectWords })
+    .then(result => {
+      console.log(result);
+    });
+}
 function moderatorRemoveAvatar(username, avatarIndex) {
   contract.moderatorRemoveAvatar({ _username: username, _avatarIndex: avatarIndex })
+    .then(result => {
+    });
+}
+function moderatorChangeDescription(username, avatarIndex, newDescription) {
+  let description_save = LZUTF8.compress(sanitize(newDescription), { outputEncoding: "StorageBinaryString" });
+
+  contract.moderatorChangeDescription({ _username: username, _avatarIndex: avatarIndex, _newDescription: description_save })
+    .then(result => {
+    });
+}
+
+function moderatorBlockListAvatar(username, avatarIndex) {
+  contract.moderatorBlockListAvatar({ _username: username, _avatarIndex: avatarIndex })
     .then(result => {
       console.log(result);
     });
 }
 
+function moderatorResetBlockList(username) {
+  contract.moderatorResetBlockList({ _username: username })
+    .then(result => {
+      console.log(result);
+    });
+}
+
+function setMinimumWithdrawalAmount(value) {
+  contract.setMinimumWithdrawalAmount({ _amount: value })
+    .then(result => {
+    });
+};
+
 function moderatorRemoveListing(username, avatarId) {
   contract.moderatorRemoveListing({ _username: username, _avatarId: avatarId })
     .then(result => {
-      console.log(result);
     });
 };
 
 function reduceEligibleRewards(val) {
   contract.reduceEligibleRewards({ value: val })
     .then(result => {
-      console.log(result);
     });
 }
-function checkXGCBalance() {
-  contract.checkXGCBalance({})
+function setWordList() {
+  contract.setWordList({ wordsIpfsLocation: "QmaApxDfuizXYoNkiPb6zKyzr8NUNLkphFAVCUJDbzat8K" })
     .then(result => {
       console.log(result);
-    });
-}
-function checkThisContractBalanceXGC() {
-  contract.checkThisContractBalanceXGC({})
-    .then(result => {
-      console.log(result);
-    });
-}
-function getXGCTotalSupply() {
-  xgcContract.ft_total_supply({})
-    .then(result => {
-      console.log(result);
-      q("#xgc-supply").innerHTML = "Current supply: " + result / XGC_DECIMALS + " XGC";
-    });
-}
-function getXGCMetadata() {
-  xgcContract.ft_metadata({})
-    .then(result => {
-      console.log(result);
-    });
-}
-function getXGCMyBalance() {
-  xgcContract.ft_balance_of({ account_id: (wallet._authData.accountId).toString() })
-    .then(result => {
-      console.log(result);
-      q("#xgc-my-balance").innerHTML = "My balance: " + result / XGC_DECIMALS + " XGC";
-    });
-}
-function getXGCGameBalance() {
-  xgcContract.ft_balance_of({ account_id: CONTRACT })
-    .then(result => {
-      console.log(result);
-      q("#xgc-game-balance").innerHTML = "Game balance: " + result / XGC_DECIMALS + " XGC";
     });
 }
 function parsePlayerBalances() {
@@ -424,71 +475,83 @@ function parsePlayerBalances() {
   return sum;
 };
 function setAvatarPrice(price) {
-  contract.setAvatarPrice({ _price: price })
+  contract.setAvatarPrice({ _price: price }, GAS_TO_ATTACH)
     .then(result => {
-      console.log(result);
+    });
+}
+function setMaxAvatars(amount) {
+  contract.setMaxAvatars({ _amount: amount }, GAS_TO_ATTACH)
+    .then(result => {
     });
 }
 
 async function depositForRewards(amount) {
-  contract.depositForRewards({ value: amount })
-    .then(result => {
-      console.log(result);
-    });
+  let value = utils.format.parseNearAmount(amount);
+  let result = await contract.depositForRewards({}, GAS_TO_ATTACH, value);
 };
 
 function resetRewardState() {
   contract.resetRewardState({})
     .then(result => {
-      console.log(result);
     });
 }
 
 function setRoyalty(royalty) {
   contract.setRoyalty({ _royalty: royalty })
     .then(result => {
-      console.log(result);
     });
 }
 
 function sendDonations(incoming) {
   contract.sendDonations({ _amountInNear: utils.format.parseNearAmount(incoming.toString()) })
     .then(result => {
-      console.log(result);
     });
 };
 function withdrawRewards(callback) {
   contract.withdrawRewards({}, 150000000000000)
     .then(result => {
-      console.log(result);
       callback();
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 }
 async function getPublicAvatars(callback) {
-  contract.getAvatars({})
+  contract.getAvatars({ start: 0, end: 50 })
     .then(result => {
-      console.log(result);
-      ORIGINAL_AVATAR_DATA = result;
-      decompressAvatarData();
-      buildMural();
-      callback();
-    });
+      contract.getAvatars({ start: 50, end: 100 })
+        .then(result2 => {
+          ORIGINAL_AVATAR_DATA = result.concat(result2);
+          decompressAvatarData();
+          buildMural();
+          callback();
+        }).catch(error2 => {
+          ERROR_MESSAGE(error2);
+        });;
+
+    }).catch(error => {
+      ERROR_MESSAGE(error);
+    });;
 };
 
 async function getPublicOrders() {
-  contract.getOrders({})
+  contract.getOrders({ start: 0, end: 50 })
     .then(result => {
-      console.log(result);
-      ALL_MARKET_DATA = result;
-      decompressMarketData();
-      buildMarket();
-    });
+      contract.getOrders({ start: 50, end: 100 })
+        .then(result2 => {
+          ALL_MARKET_DATA = result.concat(result2);
+          decompressMarketData();
+          buildMarket();
+        }).catch(error2 => {
+          ERROR_MESSAGE(error2);
+        });;
+    }).catch(error => {
+      ERROR_MESSAGE(error);
+    });;
 };
 
 async function setPayRate(rate) {
   contract.setPayRate({ _pay_rate: rate }, GAS_TO_ATTACH)
     .then(result => {
-      console.log(result);
     });
 };
 
@@ -496,52 +559,94 @@ async function getGameRewardsState() {
   contract.getGameRewardsState({})
     .then(result => {
       GAME_REWARDS_STATE_IN_NEAR = {
-        currentEligibleRewards: result[0].currentEligibleRewards / XGC_DECIMALS,
+        currentEligibleRewards: utils.format.formatNearAmount(result[0].currentEligibleRewards),
         minimumBalance: utils.format.formatNearAmount(result[0].minimumBalance),
         minimumWithdrawalAmount: result[0].minimumWithdrawalAmount,
-        payRate: result[0].payRate / XGC_DECIMALS,
+        payRate: utils.format.formatNearAmount(result[0].payRate),
         withdrawalFee: result[0].withdrawalFee,
-        avatarPrice: result[0].avatarPrice
+        avatarPrice: result[0].avatarPrice,
+        maxAvatars: result[0].maxAvatars,
+        marketRoyalty: result[0].marketRoyalty,
+        actionFee: result[0].actionFee,
+        updateCharacterFee: result[0].updateCharacterFee,
+        totalPaidOut: result[0].totalPaidOut,
+        totalFeesEarned: result[0].totalFeesEarned,
+        marketVolume: result[0].marketVolume
       }
+      populateStatsTable();
+      getAvatarMintCount();
+      q("#market-fee-label").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.marketRoyalty) + " N fixed market fee";
       q("#mint-character-button").innerHTML = "Donate for " + utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.avatarPrice) + " N";
-      q("#eligible-rewards").innerHTML = result[0].currentEligibleRewards / XGC_DECIMALS + " XGC available";
-      CURRENT_PAY_RATE = result[0].payRate / XGC_DECIMALS;
-      console.log(result);
+      q("#eligible-rewards").innerHTML = parseFloat(utils.format.formatNearAmount(result[0].currentEligibleRewards)).toFixed(NEAR_DECIMALS) + " N available";
+      CURRENT_PAY_RATE = parseFloat(utils.format.formatNearAmount(result[0].payRate)).toFixed(NEAR_DECIMALS);
+
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
+};
+
+function populateStatsTable() {
+  q("#stats-action-fee").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.actionFee) + " Ⓝ";
+  q("#stats-avatar-floor-price").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.avatarPrice) + " Ⓝ";
+  q("#stats-eligible-rewards").innerHTML = GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards + " Ⓝ";
+
+  q("#ticker-eligible-rewards").innerHTML = GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards + " N";
+
+  q("#stats-market-royalty").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.marketRoyalty) + " Ⓝ";
+  q("#stats-market-volume").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.marketVolume) + " Ⓝ";
+
+  //q("#ticker-market-volume").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.marketVolume) + " N";
+  let total_earned_by_players = 0;
+  for (var i = 0; i < ALL_PLAYERS.length; i++) {
+    total_earned_by_players += parseFloat(utils.format.formatNearAmount(ALL_PLAYERS[i].rewards));
+  }
+  q("#stats-total-earned-players").innerHTML = total_earned_by_players.toFixed(NEAR_DECIMALS) + " Ⓝ";
+
+  q("#stats-maximum-avatars").innerHTML = GAME_REWARDS_STATE_IN_NEAR.maxAvatars;
+  q("#stats-minimum-withdrawal").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount) + " Ⓝ";
+  q("#stats-pay-rate").innerHTML = GAME_REWARDS_STATE_IN_NEAR.payRate + " Ⓝ";
+  q("#stats-total-fees-earned").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.totalFeesEarned) + " Ⓝ";
+  q("#stats-total-paid-out").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.totalPaidOut) + " Ⓝ";
+  q("#stats-withdrawal-fee").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.withdrawalFee) + " Ⓝ";
 };
 
 async function setForSale(_price, callback) {
   let price_to_submit = _price.toString();
-  contract.setForSale({ _avatarId: parseInt(CURRENT_AVATAR_ID), price: utils.format.parseNearAmount(price_to_submit) })
+
+  contract.setForSale({ _avatarId: parseInt(CURRENT_AVATAR_ID), price: utils.format.parseNearAmount(price_to_submit) }, GAS_TO_ATTACH)
     .then(result => {
-      console.log(result);
       callback();
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 };
 
 async function updateThisOrder(_avatarId, _forSale, _price, callback) {
   let price_to_submit = _price.toString();
 
-  contract.updateForSale({ _avatarId: parseInt(CURRENT_AVATAR_ID), isForSale: true, price: utils.format.parseNearAmount(price_to_submit) })
+  contract.updateForSale({ _avatarId: parseInt(CURRENT_AVATAR_ID), isForSale: true, price: utils.format.parseNearAmount(price_to_submit) }, GAS_TO_ATTACH)
     .then(result => {
-      console.log(result);
       callback();
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 };
 
 async function removeThisOrder(callback) {
   contract.removeListing({ _avatarId: parseInt(CURRENT_AVATAR_ID) })
     .then(result => {
-      console.log(result);
       callback();
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 };
 
 async function buySomeAvatar(addressOfOwner, actualIdOfAvatarToBuy, price, callback) {
   contract.buySomeAvatar({ addressOfTrueOwner: addressOfOwner, _avatarIdToBuy: parseInt(actualIdOfAvatarToBuy) }, GAS_TO_ATTACH, utils.format.parseNearAmount(price))
     .then(result => {
-      console.log(result);
       callback();
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 };
 
@@ -567,7 +672,8 @@ function decompressAvatarData() {
         highestLevel: ORIGINAL_AVATAR_DATA[i].highestLevels[j],
         correctWordTotal: ORIGINAL_AVATAR_DATA[i].correctWordTotals[j],
         id: ORIGINAL_AVATAR_DATA[i].ids[j],
-        address: ORIGINAL_AVATAR_DATA[i].address
+        address: ORIGINAL_AVATAR_DATA[i].address,
+        isBlockList: ORIGINAL_AVATAR_DATA[i].isBlockList[j]
       });
     }
   }
@@ -576,28 +682,36 @@ function decompressAvatarData() {
 };
 
 async function getAvatars(callback) {
-  contract.getAvatars({})
+  contract.getAvatars({ start: 0, end: 50 })
     .then(result => {
-      ORIGINAL_AVATAR_DATA = result;
-      decompressAvatarData();
-      let wasFound = false;
-      for (var k = 0; k < result.length; k++) {
-        if (result[k].address == wallet._authData.accountId) {
-          for (var a = 0; a < result[k].ids.length; a++) {
-            CURRENT_AVATAR_TO_SUBMIT_INDEX = a; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
-            CURRENT_AVATAR_ID = result[k].ids[a];
-            wasFound = true;
+      contract.getAvatars({ start: 50, end: 100 })
+        .then(result2 => {
+          ORIGINAL_AVATAR_DATA = result.concat(result2);
+          decompressAvatarData();
+          let wasFound = false;
+          for (var k = 0; k < ORIGINAL_AVATAR_DATA.length; k++) {
+            if (ORIGINAL_AVATAR_DATA[k].address == wallet._authData.accountId) {
+              for (var a = 0; a < ORIGINAL_AVATAR_DATA[k].ids.length; a++) {
+                CURRENT_AVATAR_TO_SUBMIT_INDEX = a; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
+                CURRENT_AVATAR_ID = ORIGINAL_AVATAR_DATA[k].ids[a];
+                wasFound = true;
+              }
+            }
           }
-        }
-      }
 
-      if (wasFound) {
-        IS_LOCKED = false;
-        callback();
-      } else {
-        IS_LOCKED = true;
-        callback();
-      }
+          if (wasFound) {
+            IS_LOCKED = false;
+            callback();
+          } else {
+            IS_LOCKED = true;
+            callback();
+          }
+        }).catch(error2 => {
+          ERROR_MESSAGE(error2);
+        });
+
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 };
 
@@ -616,7 +730,6 @@ function convertDecompressedIndexToUsersArrayIndex() {
     if (ORIGINAL_AVATAR_DATA[j].address == wallet._authData.accountId) {
       for (var s = 0; s < ORIGINAL_AVATAR_DATA[j].ids.length; s++) {
         if (CURRENT_AVATAR_ID == ORIGINAL_AVATAR_DATA[j].ids[s]) {
-          console.log("Found at: " + CURRENT_AVATAR_ID);
           return s;
         }
       }
@@ -637,41 +750,96 @@ function updateLastLevelPlayed(result, isCurrentPlayer) {
     q("#last_accuracy").innerHTML = result.previousAccuracy;
   }
 };
-async function getPlayers() {
-  contract.getPlayers({})
-    .then(result => {
-      let wasFound = false;
-      ALL_PLAYERS = result;
-      for (var k = 0; k < result.length; k++) {
-        if (result[k].address == wallet._authData.accountId) {
-          CURRENT_PLAYER_INDEX = k;
-          wasFound = true;
-        }
-      }
 
-      if (wasFound) {
-        updateLastLevelPlayed(result, true);
-        CURRENT_ELIGIBLE_AMOUNT = parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards / XGC_DECIMALS);
-        q("#pending-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
-        q("#earned-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
-      }
-      q("#xgc-player-balances").innerHTML = "Player balances: " + parsePlayerBalances() / XGC_DECIMALS + " XGC";
+function updateThisPlayerResults(result) {
+  if (typeof ALL_PLAYERS[CURRENT_PLAYER_INDEX] != 'undefined') {
+    Object.assign(ALL_PLAYERS[CURRENT_PLAYER_INDEX], result);
+  }
+};
+
+function updateThisPlayerRewards(result) {
+  ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards = result;
+};
+
+async function getPlayers(callback) {
+  contract.getPlayers({ start: 0, end: 50 })
+    .then(result => {
+      contract.getPlayers({ start: 50, end: 100 })
+        .then(result2 => {
+
+          let wasFound = false;
+          ALL_PLAYERS = result.concat(result2);
+          ALL_PLAYERS_TICKER_SORT = result.concat(result2);
+          let htmlBuilder = '';
+          htmlBuilder += '<div class="ticker__item green">AVAILABLE:</div><div class="ticker__item" id="ticker-eligible-rewards">' + (GAME_REWARDS_STATE_IN_NEAR == "" ? "" : GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards + " N") + ' </div>';
+          //htmlBuilder += '<div class="ticker__item green">MARKET VOLUME:</div><div class="ticker__item" id="ticker-market-volume"></div>';
+          htmlBuilder += '<div class="ticker__item purple">LATEST GAMES:</div>';
+          ALL_PLAYERS_TICKER_SORT = ALL_PLAYERS_TICKER_SORT.sort(function (a, b) {
+            return parseFloat(b.lastBlockIndex) - parseFloat(a.lastBlockIndex);
+          });
+          for (let i = 0; i < 10; i++) {
+            if (typeof ALL_PLAYERS_TICKER_SORT[i] == 'undefined') { }
+            else {
+              htmlBuilder += '<div class="ticker__item">' + ALL_PLAYERS_TICKER_SORT[i].address.split(NEAR_NETWORK_NAME)[0] + ' (L:' + ALL_PLAYERS_TICKER_SORT[i].previousLevelCompleted + ' A:' + ALL_PLAYERS_TICKER_SORT[i].previousAccuracy + ' W:' + ALL_PLAYERS_TICKER_SORT[i].previousWpm + ')</div>';
+            }
+          }
+
+          q("#ticker-inner").innerHTML = htmlBuilder;
+
+          if (!IS_PUBLIC_PLAYERS) {
+            for (var k = 0; k < result.length; k++) {
+              if (result[k].address == wallet._authData.accountId) {
+                CURRENT_PLAYER_INDEX = k;
+                wasFound = true;
+              }
+            }
+
+            if (wasFound) {
+              updateLastLevelPlayed(result, true);
+              if (parseInt(ALL_PLAYERS[CURRENT_PLAYER_INDEX].previousLevelCompleted) >= 2) {
+                q("#game-launcher-resume").classList.remove("hide");
+              } else {
+                q("#game-launcher-resume").classList.add("hide");
+              }
+              CURRENT_ELIGIBLE_AMOUNT = parseFloat(utils.format.formatNearAmount((ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards)));
+              q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT) + " N";
+              q("#earned-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT) + " N";
+            }
+          }
+          callback();
+        }).catch(error2 => {
+          ERROR_MESSAGE(error2);
+        });
+
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 };
 async function getAvatarMintCount() {
   contract.getAvatarMintCount({})
     .then(result => {
-      console.log(result);
+      q("#design-and-mint").innerHTML = "Design and mint character #" + (result + 1);
+      if ((result + 1) >= GAME_REWARDS_STATE_IN_NEAR.maxAvatars) {
+        MAX_AVATARS_REACHED = true;
+        q("#new-avatar-description").classList.add("hide");
+        q("#current-color-selection").classList.add("hide");
+        q("#pallet").classList.add("hide");
+        q("#avatar-canvas").classList.add("hide");
+        q("#design-and-mint").innerHTML = "Maximum limits of avatars reached";
+        q("#mint-character-button").innerHTML = "Please wait for more generations";
+      }
     });
 }
 async function initPlayerRewards() {
   contract.initPlayerRewards({})
     .then(result => {
-      console.log(result);
+    }).catch(error => {
+      ERROR_MESSAGE(error);
     });
 };
 
 function bootUpGame() {
+  IN_CURRENT_GAME = false;
   q("#game-container").classList.remove("hide");
   q("#mural-box").classList.add("hide");
   q("#my-account-data").classList.add("hide");
@@ -679,6 +847,7 @@ function bootUpGame() {
   for (var siflow = 0; siflow < signed_in_flows.length; siflow++) {
     signed_in_flows[siflow].classList.remove("hide");
   }
+  displayCurrentGameAvatar();
   startGame();
 };
 
@@ -704,6 +873,7 @@ function Game() {
   let WRONG_CHARACTER_COUNT = 0;
   let CORRECT_CHARACTER_COUNT = 0;
   let MAX_OFFSET_HEIGHT = 445;
+  let MIN_OFFSET_HEIGHT = 50;
   let GAME_LOST = false;
   let WIDTH_FOR_ITEMS = 900;
   let CURRENT_VELOCITY = 0;
@@ -712,6 +882,7 @@ function Game() {
   let Y_MAX_HEIGHT = 460;
   let THIS_LEVEL_WORD_INDEXES = [];
   let moving_between_levels = true;
+  let MUST_CLEAR_LASER_WATCHER = false;
 
   this.getCorrectCount = function () {
     return CORRECT_COUNT;
@@ -737,7 +908,7 @@ function Game() {
     this_word_index = 0;
     q("#words").innerHTML = "";
 
-    that.init(WORDS, function () {
+    that.init(WORDS, LEVEL, function () {
       that.timer();
       game_running = true;
       q("#game-start-lost-overlay").classList.add("hide");
@@ -753,15 +924,20 @@ function Game() {
     return LEVEL;
   }
 
-  this.init = function (words, callback) {
+  this.init = function (words, startingLevel, callback) {
+    MUST_CLEAR_LASER_WATCHER = false;
     WORDS_TO_USE = words;
+    LEVEL = startingLevel;
+
     q("#notification").innerHTML = "Get ready..."
     that.getLevelWords(function () {
       that.updateLevel(function () {
         q("#game-start-lost-overlay").classList.add("hide");
         q("#notification").classList.add("hide");
         const width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-        if (width < 500) { WIDTH_FOR_ITEMS = 250; }
+        // if (width < 800) { WIDTH_FOR_ITEMS = 250; }
+        if (width < 950) { WIDTH_FOR_ITEMS = width - 100; }
+
 
         if (LEVEL == 1) { size = 5; }
         else if (LEVEL == 2) { size = 7; }
@@ -841,16 +1017,70 @@ function Game() {
   };
   this.sendLaser = function () {
     let new_circle = document.createElement("div");
-    new_circle.id = "laser" + LASER_COUNT;
+    //new_circle.id = "laser" + LASER_COUNT;
     new_circle.classList.add("circle");
+    new_circle.classList.add("laser-circle" + LASER_COUNT);
+    new_circle.classList.add("laser-circle");
     q("#typing-game").append(new_circle);
-    LASER_COUNT++;
 
     let current_selected_word = q("#words");
     var current_moving_word = current_selected_word.childNodes[this_word_index];
+    current_moving_word.classList.add("laser-word" + LASER_COUNT);
+    current_moving_word.classList.add("laser-word");
+
     that.moveItem(new_circle, ([(current_moving_word.offsetLeft + that.currentMovingLocation()[2]), Y_MAX_HEIGHT]));
+    new_circle.style.animation = "MoveDownToUp 0.5s linear infinite";
+    LASER_COUNT++;
   };
 
+  this.startThisLaserWatcher = function () {
+    var checkTime = 1;
+
+    var check = setInterval(function () {
+
+      let check_for_matching_words = document.querySelectorAll(".laser-word");//+(LASER_COUNT - 1))[0];
+      let check_for_matching_lasers = document.querySelectorAll(".laser-circle");// + (LASER_COUNT - 1))[0]
+
+      for (var i = 0; i < check_for_matching_words.length; i++) {
+
+        let check_for_matching_word = check_for_matching_words[i];
+        let check_for_matching_laser = check_for_matching_lasers[i];
+
+        if (check_for_matching_laser.classList.contains("hide")) { }
+        else {
+
+          if (typeof check_for_matching_word == 'undefined' || check_for_matching_word === null) { }
+          else if (typeof check_for_matching_laser == 'undefined' || check_for_matching_laser === null) { }
+          else {
+
+            if (check_for_matching_word.offsetTop + 25 > check_for_matching_laser.offsetTop) {
+              let clear_sound = new Audio('audio/clear.mp3');
+              clear_sound.play();
+              check_for_matching_word.classList.add("hide");
+              check_for_matching_laser.classList.add("hide");
+              if (i == (check_for_matching_words.length - 1)) {
+                if (!game_running && !GAME_LOST) {
+                  check_for_matching_word.classList.remove("current-word");
+                  check_for_matching_word.classList.add("previous-current-word");
+                  that.resetAndProceedToNewSession();
+                }
+              }
+            }
+
+            if (check_for_matching_laser.offsetTop <= MIN_OFFSET_HEIGHT) {
+              check_for_matching_laser.classList.add("hide");
+            }
+            if (MUST_CLEAR_LASER_WATCHER) {
+              clearInterval(check);
+              check = undefined;
+            }
+          }
+
+        }
+      }
+
+    }, checkTime);
+  }
   this.timer = function () {
     var minutesLabel = document.getElementById("minutes");
     var secondsLabel = document.getElementById("seconds");
@@ -937,11 +1167,10 @@ function Game() {
       current_selected_word.childNodes[this_word_index].style.animationDirection = "reverse";
       CURRENT_VELOCITY = 1;
     }
-    CURRENT_VELOCITY = Y_MAX_HEIGHT / CURRENT_VELOCITY; // From css MoveUpDown pixels
+    CURRENT_VELOCITY = Y_MAX_HEIGHT / CURRENT_VELOCITY;
   };
 
   this.checkAndSetNextWord = function () {
-    let found_first_instance = false;
 
     if (this_word_index + 1 == current_words.length) { game_running = false; } else {
       this_word = current_words[this_word_index + 1].split("");
@@ -951,24 +1180,18 @@ function Game() {
 
     if (this_word_index + 1 == current_words.length) { game_running = false; } else {
       current_selected_word.childNodes[this_word_index].classList.remove("current-word");
+      current_selected_word.childNodes[this_word_index].classList.add("previous-current-word");
       this_word_index++;
       current_selected_word.childNodes[this_word_index].classList.add("current-word");
     }
     that.setAnimationByLevel();
 
-    if (!game_running && !GAME_LOST) {
-      console.log("Tried to get init from here");
-      current_selected_word.childNodes[this_word_index].classList.remove("current-word");
-      that.resetAndProceedToNewSession();
-
-    }
   };
+
   this.startThisWordWatcher = function () {
     var checkTime = 10;
     var check = setInterval(function () {
-      if (typeof q("#words").childNodes[this_word_index] == 'undefined') {
-        // changing levels
-      }
+      if (typeof q("#words").childNodes[this_word_index] == 'undefined') { }
       else {
         let current_word_height = q("#words").childNodes[this_word_index].offsetTop;
         if (current_word_height > MAX_OFFSET_HEIGHT) {
@@ -984,6 +1207,7 @@ function Game() {
     that.pauseTimer();
     GAME_LOST = true;
     game_running = false;
+    MUST_CLEAR_LASER_WATCHER = true;
     q("#game-start-lost-overlay").classList.remove("hide");
     q("#notification").classList.remove("hide");
     q("#notification").innerHTML = 'Game over...';
@@ -994,8 +1218,6 @@ function Game() {
   };
 
   this.submitLastLevelPlayed = async function (callback) {
-    console.log("Submitting this many correct words");
-    console.log(CURRENT_LEVEL_CORRECT_COUNT);
     contract.submitLastLevelPlayed({
       level: parseInt(LEVEL),
       wpm: parseInt(CURRENT_WPM),
@@ -1004,31 +1226,29 @@ function Game() {
       _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX)
     }, GAS_TO_ATTACH)
       .then(result => {
-        console.log("last level saved");
-        console.log(result);
         CURRENT_LEVEL_CORRECT_COUNT = 0;
+        getPlayers(function () { });
         callback(result);
+      }).catch(error => {
+        ERROR_MESSAGE(error);
       });
   };
 
   this.getLevelWords = async function (callback) {
-    contract.getLevelWords({ level: LEVEL })
+    contract.getLevelWords({ level: parseInt(LEVEL) })
       .then(result => {
         THIS_LEVEL_WORD_INDEXES = result;
         callback()
+      }).catch(error => {
+        ERROR_MESSAGE(error);
       });
   };
   this.updateLevel = async function (callback) {
     contract.updateLevel({ level: LEVEL })
       .then(result => {
-        console.log(result);
         callback()
-      });
-  };
-
-  this.getLastLevelPlayed = async function () {
-    contract.getLastLevelPlayed({})
-      .then(result => {
+      }).catch(error => {
+        ERROR_MESSAGE(error);
       });
   };
 
@@ -1047,13 +1267,13 @@ function Game() {
   };
 
   this.initContract = async function () {
-    contract.initContract({ wordsList: "QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i", mintCount: 0 })
+    //QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i
+    contract.initContract({ wordsList: "QmaApxDfuizXYoNkiPb6zKyzr8NUNLkphFAVCUJDbzat8K", mintCount: 0 }, GAS_TO_ATTACH)
       .then(result => {
-        console.log(result);
 
-        contract.modifyRewardStates({ _minimum_balance: "1", _pay_rate: "1", _minimum_withdrawal_amount: "1", _withdrawal_fee: "1" })
+        contract.modifyRewardStates({ _minimum_balance: utils.format.parseNearAmount("25"), _pay_rate: utils.format.parseNearAmount("0.0002"), _minimum_withdrawal_amount: utils.format.parseNearAmount("0.02"), _withdrawal_fee: utils.format.parseNearAmount("0.01") }, GAS_TO_ATTACH)
           .then(result => {
-            console.log(result);
+
           });
 
       });
@@ -1069,12 +1289,6 @@ function Game() {
         }
       });
   };
-  this.getThisPlayerAddress = async function () {
-    contract.getThisPlayerAddress({})
-      .then(result => {
-        console.log(result);
-      });
-  };
 
 
   this.resetAndProceedToNewSession = function () {
@@ -1083,15 +1297,22 @@ function Game() {
     current_words = [];
     this_word = "";
     this_word_index = 0;
-    //CORRECT_COUNT = 0;
     q("#words").innerHTML = "";
+    let check_for_matching_lasers = document.querySelectorAll(".laser-circle");
+    for (var z = 0; z < check_for_matching_lasers.length; z++) {
+      check_for_matching_lasers[z].remove();
+    }
+    LASER_COUNT = 0;
     if (!GAME_LOST) {
       q("#game-start-lost-overlay").classList.remove("hide");
       q("#notification").classList.remove("hide");
       q("#notification").innerHTML = "Saving to blockchain, loading level " + (game.getLevel() + 1) + "...";
       that.submitLastLevelPlayed(function (result) {
         LEVEL++;
-        that.init(WORDS, function () {
+        updateThisPlayerResults(result);
+        getAvatars(function () { });
+        getGameRewardsState();
+        that.init(WORDS, LEVEL, function () {
           timer_paused = false;
           that.timer();
         });
@@ -1118,7 +1339,6 @@ function Game() {
       e = e || window.event;
       if (!moving_between_levels) {
 
-        //current avatar is 20px wide,
         if (game_running && !GAME_LOST) {
           that.moveItem(q("#current-avatar-canvas"), ([(that.currentMovingLocation()[0] + (that.currentMovingLocation()[2] - 20)), STATIC_Y_AVATAR_HEIGHT]));
           let current_selected_word = q(".current-word");
@@ -1126,29 +1346,33 @@ function Game() {
           current_completed_string.push(current_key);
 
           if (matchingCharArray(current_completed_string, this_word)) {
+            that.sendLaser();
+            let laser = new Audio('audio/laser_retro.mp3');
+            laser.volume = 0.5;
+            laser.play();
+
             current_selected_word.childNodes[this_word.length - 1].classList.add("current-char");
             CORRECT_COUNT++;
             CURRENT_LEVEL_CORRECT_COUNT++;
             that.checkAndSetNextWord();
-            current_selected_word.classList.add("correct");
-            current_selected_word.classList.add("hide");
 
-            let clear_sound = new Audio('audio/clear.mp3');
-            clear_sound.play();
-            console.log("Correct count");
-            console.log(CORRECT_COUNT);
-            CURRENT_ELIGIBLE_AMOUNT += CURRENT_PAY_RATE;
-            q("#pending-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
-            q("#earned-rewards-total").innerHTML = "+" + parseFloat(CURRENT_ELIGIBLE_AMOUNT).toFixed(XGC_DECIMAL_PLACES) + " XGC";
+            if (parseFloat(GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards) > 0) {
+              CURRENT_ELIGIBLE_AMOUNT += parseFloat(CURRENT_PAY_RATE);
+              q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
+              q("#earned-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
+            }
             current_completed_string = [];
           } else {
             for (var char = 0; char < current_completed_string.length; char++) {
               if (current_completed_string[char] == this_word[char]) {
                 current_selected_word.childNodes[char].classList.add("current-char");
                 CORRECT_CHARACTER_COUNT++;
-                //that.sendLaser();
               }
               else {
+                let force_field = new Audio('audio/force_field.mp3');
+                force_field.volume = 0.35;
+                force_field.play();
+
                 current_selected_word.childNodes[char].classList.add("wrong-char");
                 current_completed_string.pop();
                 WRONG_CHARACTER_COUNT++;
@@ -1167,6 +1391,7 @@ function Game() {
 }
 let IS_FETCHING_WORDS = false;
 const currentAvatarPallet = {};
+const currentUpdatePallet = {};
 
 const hextable = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
 
@@ -1204,105 +1429,185 @@ function convertToHex(array) {
 let DISPLAY_AVATAR = [
   "",
   "",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
   "",
   "",
   "",
-  "rgb(72, 161, 248)",
-  "rgb(204, 53, 41)",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
-  "rgb(204, 53, 41)",
-  "rgb(72, 161, 248)",
-  "",
-  "rgb(72, 161, 248)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(204, 53, 41)",
-  "rgb(72, 161, 248)",
-  "",
-  "rgb(72, 161, 248)",
-  "rgb(204, 53, 41)",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
-  "rgb(204, 53, 41)",
-  "rgb(72, 161, 248)",
   "",
   "",
   "",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
-  "rgb(72, 161, 248)",
   "",
   "",
-  "rgb(225, 216, 148)",
-  "rgb(225, 216, 148)",
-  "rgb(225, 216, 148)",
-  "rgb(114, 59, 190)",
-  "rgb(114, 59, 190)",
-  "rgb(225, 216, 148)",
-  "rgb(225, 216, 148)",
-  "rgb(225, 216, 148)",
-  "rgb(225, 216, 148)",
-  "rgb(114, 59, 190)",
-  "rgb(114, 59, 190)",
-  "rgb(114, 59, 190)",
-  "rgb(114, 59, 190)",
-  "rgb(114, 59, 190)",
-  "rgb(114, 59, 190)",
-  "rgb(225, 216, 148)"
-];
-
-
+  "0x000000",
+  "0x000000",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "",
+  "",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "",
+  "",
+  "0x000000",
+  "0xc8ff41",
+  "",
+  "",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "0x000000",
+  "",
+  "",
+  "0x000000",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0x000000",
+  "",
+  "",
+  "0x000000",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "0x000000",
+  "",
+  "",
+  "0x000000",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0x000000",
+  "",
+  "",
+  "0x000000",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "0xc8ff41",
+  "0xc8ff41",
+  "",
+  "0x000000",
+  "",
+  "",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "0x000000",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  ""
+]
 
 
 function startGame() {
+  game = undefined;
   game = new Game();
   game.getWordsList(function () {
     q("#game-container").classList.remove("hide");
     q("#notification").innerHTML = "Click to start";
     watchLauncher();
-
   });
 }
 
 function watchLauncher() {
+  q("#notification").addEventListener('click', function () {
+    if (q("#game-start-lost-overlay").classList.contains("hide")) { } else {
+      q("#game-start-lost-overlay").click();
+    }
+  });
   q("#game-start-lost-overlay").addEventListener('click', function () {
     if (!IS_FETCHING_WORDS && !IN_CURRENT_GAME) {
       IS_FETCHING_WORDS = true;
       IN_CURRENT_GAME = true;
-      q("#notification").innerHTML = "Loading level 1 from smart contract...";
+      //q("#notification").innerHTML = "Loading level 1 from smart contract...";
       if (game.isGameOver()) {
         game.resetGameOver();
       } else {
-        game.init(WORDS, function () {
-          q("#game-start-lost-overlay").classList.add("hide");
-          q("#notification").classList.add("hide");
-          q("#words").classList.remove("hide");
-          game.start();
-          game.startThisWordWatcher();
-          IS_FETCHING_WORDS = false;
+        getPlayers(function () {
+          getGameRewardsState();
+          game.init(WORDS, START_LEVEL, function () {
+            q("#game-start-lost-overlay").classList.add("hide");
+            q("#notification").classList.add("hide");
+            q("#words").classList.remove("hide");
+            game.start();
+            game.startThisWordWatcher();
+            game.startThisLaserWatcher();
+            IS_FETCHING_WORDS = false;
+          });
         });
       }
+    } else {
+
     }
   });
 };
 function displayCurrentGameAvatar() {
+  q("#current-avatar-canvas").innerHTML = "";
+  q("#display-avatar-canvas").innerHTML = "";
+
   let splitAvatarData = findAvatarFromId(CURRENT_AVATAR_ID).data.split(",");
   for (var s = 0; s < splitAvatarData.length; s++) {
     if (splitAvatarData[s] == "") { }
@@ -1327,15 +1632,15 @@ function displayCurrentGameAvatar() {
 
 function generateCurrentAvatar() {
   q("#all-account-avatars").innerHTML = "";
-  console.log("building user");
   let was_found = false;
   for (var j = 0; j < DECOMPRESSED_AVATARS.length; j++) {
 
     if (DECOMPRESSED_AVATARS[j].address == wallet._authData.accountId) {
       was_found = true;
-      console.log("Found address");
       let is_selected_index = (CURRENT_AVATAR_ID == DECOMPRESSED_AVATARS[j].id);
-      q("#all-account-avatars").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[j], is_selected_index);
+      let is_block_list = DECOMPRESSED_AVATARS[j].isBlockList;
+
+      q("#all-account-avatars").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[j], is_selected_index, is_block_list);
     }
   }
 
@@ -1369,24 +1674,29 @@ function getOrderForAvatarId(thisId) {
 function watchAvatarSelection() {
   let all_avatars = document.querySelectorAll("#all-account-avatars .account-avatar-canvas");
   for (var k = 0; k < all_avatars.length; k++) {
+
     all_avatars[k].addEventListener("click", function (e) {
       if (e.target.parentElement.classList.contains("account-avatar-canvas")) {
-        for (var p = 0; p < all_avatars.length; p++) {
-          all_avatars[p].classList.remove("selected-avatar");
+
+        let all_avatars_internal = document.querySelectorAll("#all-account-avatars .account-avatar-canvas");
+        for (var p = 0; p < all_avatars_internal.length; p++) {
+          all_avatars_internal[p].classList.remove("selected-avatar");
         }
+
         e.target.parentElement.classList.add("selected-avatar");
         q("#update-avatar-description").value = e.target.innerHTML;
+        q("#design-and-mint-update").innerHTML = "Update character #" + e.target.parentElement.dataset.avatarid;
+
         let orderForAVatarId = getOrderForAvatarId(e.target.parentElement.dataset.avatarid);
         if (orderForAVatarId == false) {
           q("#update-market-price-input").value = "";
           q("#remove-this-listing-button").classList.add("hide");
-          q("#update-market-price").innerHTML = "Set asking price for 1 XGC";
-        }
-        else {
+          q("#update-market-price").innerHTML = "Set asking price for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
+        } else {
           if (orderForAVatarId.forSale) {
             q("#update-market-price-input").value = utils.format.formatNearAmount(orderForAVatarId.priceForSale);
             q("#remove-this-listing-button").classList.remove("hide");
-            q("#update-market-price").innerHTML = "Update asking price";
+            q("#update-market-price").innerHTML = "Update asking price for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
           }
         }
 
@@ -1395,11 +1705,11 @@ function watchAvatarSelection() {
         CURRENT_AVATAR_TO_SUBMIT_INDEX = convertDecompressedIndexToUsersArrayIndex();
 
         q("#current-avatar-canvas").innerHTML = "";
-        setTimeout(function () {
-          displayCurrentGameAvatar();
-        }, 1);
+
       }
+
     });
+
   }
 };
 
@@ -1427,13 +1737,14 @@ function buildMarketCanvas(marketItem, avatarItem) {
       builder += '<div class="lg-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
     }
   }
-  builder += '<div class="market-descriptions">' + avatarItem.description + '</div>';
 
   builder += '</div>';
 
   builder += '<div class="avatar-box">';
-  builder += '<span class="rank-levels">' + avatarItem.highestLevel + '.</span><span class="rank-words">' + avatarItem.correctWordTotal + '</span><span class="mint-ids">' + avatarItem.id + '</span><div class="truncate">' + avatarItem.address.split(NEAR_NETWORK_NAME)[0] + '</div>';
+  builder += '<span class="rank-levels">' + avatarItem.highestLevel + '.</span><span class="rank-words">' + avatarItem.correctWordTotal + '</span><span class="mint-ids">' + avatarItem.id + '</span>.<div class="truncate">' + avatarItem.address.split(NEAR_NETWORK_NAME)[0] + '</div>';
   builder += '</div>';
+
+  builder += '<div class="market-descriptions">' + avatarItem.description + '</div>';
 
   builder += '<div class="market-details-box">';
 
@@ -1446,7 +1757,7 @@ function buildMarketCanvas(marketItem, avatarItem) {
   return builder;
 };
 
-function buildAvatarCanvas(avatarItem, is_selected) {
+function buildAvatarCanvas(avatarItem, is_selected, is_block_list) {
   let splitAvatarData = avatarItem.data.split(",");
   for (var s = 0; s < splitAvatarData.length; s++) {
     if (splitAvatarData[s] == "") { }
@@ -1467,7 +1778,11 @@ function buildAvatarCanvas(avatarItem, is_selected) {
       builder += '<div class="lg-pixel" style="background-color:' + splitAvatarData[i] + '"></div>';
     }
   }
-  builder += '</div><div class="avatar-box"><span class="rank-levels">' + avatarItem.highestLevel + '.</span><span class="rank-words">' + avatarItem.correctWordTotal + '</span><span class="mint-ids">' + avatarItem.id + '</span><div class="truncate">' + avatarItem.address.split(NEAR_NETWORK_NAME)[0] + '</div></div>';
+  if (is_block_list) {
+    builder += '</div><div class="avatar-box red">Needs Updating</div>';
+  } else {
+    builder += '</div><div class="avatar-box"><span class="rank-levels">' + avatarItem.highestLevel + '.</span><span class="rank-words">' + avatarItem.correctWordTotal + '</span><span class="mint-ids">' + avatarItem.id + '</span>.<div class="truncate">' + avatarItem.address.split(NEAR_NETWORK_NAME)[0] + '</div></div>';
+  }
 
   builder += '<div class="descriptions">' + avatarItem.description + '</div>';
   builder += '</div>';
@@ -1476,8 +1791,8 @@ function buildAvatarCanvas(avatarItem, is_selected) {
 }
 
 function generateDisplayAvatar() {
-  for (var i = 0; i < 64; i++) {
-    q("#display-avatar-canvas").innerHTML += '<div class="sm-pixel" style="background-color:' + DISPLAY_AVATAR[i] + '"></div>';
+  for (var i = 0; i < DISPLAY_AVATAR.length; i++) {
+    q("#display-avatar-canvas").innerHTML += '<div class="sm-pixel" style="background-color:#' + DISPLAY_AVATAR[i].split("0x")[1] + '"></div>';
 
   }
 };
@@ -1488,13 +1803,17 @@ watchAvatarGenerator();
 function generateAvatarCanvas() {
   for (var k = 0; k < 132; k++) {
     q("#avatar-canvas").innerHTML += '<div class="pixel"></div>';
+    q("#avatar-canvas-update").innerHTML += '<div class="pixel"></div>';
   }
 };
+
 function watchAvatarGenerator() {
   currentAvatarPallet.thesePalletChoices = [];
+  currentUpdatePallet.thesePalletChoices = [];
 
   var randomColor = function () { return Math.floor(Math.random() * 16777215).toString(16); };
   let all_pallets = document.querySelector("#pallet");
+  let update_pallets = document.querySelector("#pallet-update");
 
   let getThisAvatarPalletSelection = function (incoming) {
     for (var k = 0; k < currentAvatarPallet.thesePalletChoices.length; k++) {
@@ -1503,7 +1822,13 @@ function watchAvatarGenerator() {
       }
     }
   }
-
+  let getThisUpdateAvatarPalletSelection = function (incoming) {
+    for (var k = 0; k < currentUpdatePallet.thesePalletChoices.length; k++) {
+      if (incoming == currentUpdatePallet.thesePalletChoices[k]) {
+        return currentUpdatePallet.thesePalletChoices[k].dataset.color;
+      }
+    }
+  }
   for (var i = 0; i < all_pallets.children.length; i++) {
     currentAvatarPallet.thesePalletChoices.push(all_pallets.children[i]);
     let new_random_colour = randomColor();
@@ -1525,7 +1850,30 @@ function watchAvatarGenerator() {
       q("#current-color-selection").style.backgroundColor = getThisAvatarPalletSelection(event.target);
     });
   }
+
+  for (var i = 0; i < update_pallets.children.length; i++) {
+    currentUpdatePallet.thesePalletChoices.push(update_pallets.children[i]);
+    let new_random_colour = randomColor();
+    if (i == 0) {
+      update_pallets.children[i].style.backgroundColor = "";
+      update_pallets.children[i].dataset.color = "";
+    } else if (i == update_pallets.children.length - 2) {
+      update_pallets.children[i].style.backgroundColor = "#ffffff";
+      update_pallets.children[i].dataset.color = "#ffffff";
+    } else if (i == update_pallets.children.length - 1) {
+      update_pallets.children[i].style.backgroundColor = "#000000";
+      update_pallets.children[i].dataset.color = "#000000";
+    } else {
+      update_pallets.children[i].style.backgroundColor = "#" + new_random_colour;
+      update_pallets.children[i].dataset.color = "#" + new_random_colour;
+    }
+    update_pallets.children[i].addEventListener('click', function (event) {
+      currentUpdatePallet.colorSelection = getThisUpdateAvatarPalletSelection(event.target);
+      q("#current-color-selection-update").style.backgroundColor = getThisUpdateAvatarPalletSelection(event.target);
+    });
+  }
   watchPixelsForAvatar();
+  watchPixelsForUpdateAvatar();
 
 }
 
@@ -1538,17 +1886,40 @@ function watchPixelsForAvatar() {
   }
 };
 
+function watchPixelsForUpdateAvatar() {
+  let avatar_canvas = document.querySelector("#avatar-canvas-update");
+  for (var i = 0; i < avatar_canvas.children.length; i++) {
+    avatar_canvas.children[i].addEventListener('click', function (event) {
+      event.target.style.backgroundColor = currentUpdatePallet.colorSelection;
+    });
+  }
+};
 function watchDonationButton() {
   q("#mint-character-button").addEventListener("click", function () {
-    let avatar_canvas = document.querySelector("#avatar-canvas");
-    let newArray = [];
-    for (var i = 0; i < avatar_canvas.children.length; i++) {
-      newArray.push(avatar_canvas.children[i].style.backgroundColor);
+    if (!MAX_AVATARS_REACHED) {
+      let avatar_canvas = document.querySelector("#avatar-canvas");
+      let newArray = [];
+      for (var i = 0; i < avatar_canvas.children.length; i++) {
+        newArray.push(avatar_canvas.children[i].style.backgroundColor);
+      }
+      PIXELS_TO_SUBMIT_FOR_AVATAR = newArray;
+      mintAvatar();
     }
-    PIXELS_TO_SUBMIT_FOR_AVATAR = newArray;
-    mintAvatar();
   });
 
+  q("#update-character-button").addEventListener("click", function () {
+    if (!IS_UPDATING_CHARACTER) {
+      IS_UPDATING_CHARACTER = true;
+      let avatar_canvas = document.querySelector("#avatar-canvas-update");
+      let newArray = [];
+      for (var i = 0; i < avatar_canvas.children.length; i++) {
+        newArray.push(avatar_canvas.children[i].style.backgroundColor);
+      }
+      q("#update-character-button").innerHTML = "Updating, please wait";
+      PIXELS_TO_SUBMIT_FOR_UPDATE_CHARACTER = newArray;
+      updateAvatarCharacter();
+    }
+  });
 
 };
 
@@ -1558,7 +1929,18 @@ async function mintAvatar() {
   var to_save_data = LZUTF8.compress(pixels_to_hex, { outputEncoding: "StorageBinaryString" });
   let description_save = LZUTF8.compress(sanitize(q("#new-avatar-description").value), { outputEncoding: "StorageBinaryString" });
   let result = await contract.mintAvatar({ incomingAvatarData: to_save_data.toString(), description: description_save.toString() }, GAS_TO_ATTACH, GAME_REWARDS_STATE_IN_NEAR.avatarPrice);
-  console.log(result);
+};
+
+function updateAvatarCharacter() {
+  let pixels_to_hex = convertToHex(PIXELS_TO_SUBMIT_FOR_UPDATE_CHARACTER).toString();
+  var to_save_data = LZUTF8.compress(pixels_to_hex, { outputEncoding: "StorageBinaryString" });
+
+  contract.updateAvatarCharacter({ _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX), incomingAvatarData: to_save_data }, GAS_TO_ATTACH)
+    .then(result => {
+      location.reload();
+    }).catch(error => {
+      ERROR_MESSAGE(error);
+    });
 };
 
 function saveAvatar() {
@@ -1572,7 +1954,6 @@ function watchMarketSorting() {
   if (!SET_MARKET_SORT_WATCHERS_ONCE) {
     SET_MARKET_SORT_WATCHERS_ONCE = true;
     q("#rank-sort-market").addEventListener("click", function () {
-      console.log("click");
       rankSorting(".rank-levels", "market-container");
     });
     q("#words-sort-market").addEventListener("click", function () {
@@ -1604,7 +1985,6 @@ function watchMuralSorting() {
 
 function rankSorting(sort_by, item) {
 
-  let sortingCategories = [item];
 
   var toSort = q("#" + item).children;
   toSort = Array.prototype.slice.call(toSort, 0);
@@ -1643,9 +2023,9 @@ function availableRewardsWatcher() {
   q("#eligible-rewards").addEventListener("click", function () {
     if (!IS_DISPLAYING_PAYRATE) {
       IS_DISPLAYING_PAYRATE = true;
-      q("#eligible-rewards").innerHTML = "Pay rate " + GAME_REWARDS_STATE_IN_NEAR.payRate + " XGC/word";
+      q("#eligible-rewards").innerHTML = "Pay rate " + GAME_REWARDS_STATE_IN_NEAR.payRate + " N per word";
       setTimeout(function () {
-        q("#eligible-rewards").innerHTML = GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards + " XGC available";
+        q("#eligible-rewards").innerHTML = GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards + " N available";
         IS_DISPLAYING_PAYRATE = false;
       }, TIMEOUT_PROCESSING_WORDS_DELAY);
     }
@@ -1667,13 +2047,17 @@ function withdrawalWatcher() {
   q("#pending-rewards-total").addEventListener("click", function () {
     if (!WITHDRAWAL_BUTTON_PROCESSING) {
       WITHDRAWAL_BUTTON_PROCESSING = true;
-      if (parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards) >= parseFloat(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount)) {
+      if (typeof ALL_PLAYERS[CURRENT_PLAYER_INDEX] != 'undefined' && (parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards) >= parseFloat(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount))) {
         q("#pending-rewards-total").innerHTML = "Withdrawing...";
         withdrawalProcess();
       } else {
-        q("#pending-rewards-total").innerHTML = "Minimum " + GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount / XGC_DECIMALS + " XGC";
+        q("#pending-rewards-total").innerHTML = "Minimum " + utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount) + " N";
         setTimeout(function () {
-          q("#pending-rewards-total").innerHTML = "+ " + (ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards / XGC_DECIMALS).toFixed(XGC_DECIMAL_PLACES) + " XGC ";
+          if (typeof ALL_PLAYERS[CURRENT_PLAYER_INDEX] != 'undefined') {
+            q("#pending-rewards-total").innerHTML = "+ " + utils.format.formatNearAmount((ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards)) + " N";
+          } else {
+            q("#pending-rewards-total").innerHTML = "+ 0 N";
+          }
           WITHDRAWAL_BUTTON_PROCESSING = false;
         }, TIMEOUT_PROCESSING_WORDS_DELAY);
       }
@@ -1683,13 +2067,13 @@ function withdrawalWatcher() {
   q("#earned-rewards-withdrawal").addEventListener("click", function () {
     if (!WITHDRAWAL_BUTTON_PROCESSING) {
       WITHDRAWAL_BUTTON_PROCESSING = true;
-      if (parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].reward) >= parseFloat(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount)) {
+      if (parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].reward) >= utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount)) {
         q("#earned-rewards-withdrawal").innerHTML = "Withdrawing...";
         withdrawalProcess();
       } else {
         q("#earned-rewards-withdrawal").innerHTMl = "Need minimum of " + GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount + " N";
         setTimeout(function () {
-          q("#earned-rewards-withdrawal").innerHTMl = "+ " + parseFloat(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards / XGC_DECIMALS).toFixed(XGC_DECIMAL_PLACES) + " N";
+          q("#earned-rewards-withdrawal").innerHTMl = "+ " + utils.format.formatNearAmount(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards) + " N";
           WITHDRAWAL_BUTTON_PROCESSING = false;
         }, TIMEOUT_PROCESSING_WORDS_DELAY);
       }
@@ -1710,7 +2094,7 @@ function removeListingWatcher() {
         removeThisOrder(function () {
           q("#remove-this-listing-button").innerHTML = "Removed";
           IS_UPDATING_ORDER = false;
-          buildMarket();
+          getPublicOrders();
         });
       }
     }
@@ -1718,22 +2102,26 @@ function removeListingWatcher() {
 };
 
 function setAskingPriceWatcher() {
+  q("#update-market-price").innerHTML = "Set asking price for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
+
   q("#update-market-price").addEventListener("click", function () {
     if (!IS_UPDATING_ORDER) {
-      if (ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards >= ACTION_FEE) {
+      if (typeof ALL_PLAYERS[CURRENT_PLAYER_INDEX] != 'undefined' && (parseFloat(utils.format.parseNearAmount(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards)) >= parseFloat(utils.format.parseNearAmount(ACTION_FEE)))) {
         IS_UPDATING_ORDER = true;
         let orderForAVatarId = getOrderForAvatarId(CURRENT_AVATAR_ID);
         if (orderForAVatarId == false) {
           q("#update-market-price").innerHTML = "Updating to market...";
           setForSale(sanitize(q("#update-market-price-input").value), function () {
             q("#update-market-price").innerHTML = "Updated to market";
+            updateThisPlayerRewards((ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards - ACTION_FEE).toLocaleString('fullwide', { useGrouping: false }));
+            CURRENT_ELIGIBLE_AMOUNT = parseFloat(utils.format.formatNearAmount((ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards)));
+            q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
             IS_UPDATING_ORDER = false;
             getPublicOrders();
           });
         } else {
           q("#update-market-price").innerHTML = "Updating listing...";
           updateThisOrder(CURRENT_AVATAR_ID, true, sanitize(q("#update-market-price-input").value), function () {
-            console.log("updated listing");
             q("#update-market-price").innerHTML = "Updated on market";
             IS_UPDATING_ORDER = false;
             getPublicOrders();
@@ -1742,11 +2130,11 @@ function setAskingPriceWatcher() {
       } else {
         q("#update-market-price").classList.add("red");
         q("#update-market-price").classList.remove("green");
-        q("#update-market-price").innerHTML = "Requires minimum fee of " + ACTION_FEE / XGC_DECIMALS + " XGC";
+        q("#update-market-price").innerHTML = "Requires minimum fee of " + utils.format.formatNearAmount(ACTION_FEE) + " N";
         setTimeout(function () {
           q("#update-market-price").classList.remove("red");
           q("#update-market-price").classList.add("green");
-          q("#update-market-price").innerHTML = "Set asking price for 1 XGC";
+          q("#update-market-price").innerHTML = "Set asking price for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
           IS_UPDATING_ORDER = false;
         }, TIMEOUT_PROCESSING_WORDS_DELAY);
       }
@@ -1755,35 +2143,46 @@ function setAskingPriceWatcher() {
 };
 
 function updateDescriptionWatcher() {
+  q("#update-description").innerHTML = "Update description for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
 
   q("#update-description").addEventListener("click", function () {
     if (!IS_UPDATING_DESCRIPTION) {
       q("#update-description").innerHTML = "Updating...";
       IS_UPDATING_DESCRIPTION = true;
-      if (ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards >= ACTION_FEE) {
+      if (typeof ALL_PLAYERS[CURRENT_PLAYER_INDEX] != 'undefined' && (parseFloat(utils.format.parseNearAmount(ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards)) >= parseFloat(utils.format.parseNearAmount(ACTION_FEE)))) {
 
         let new_description_save = LZUTF8.compress(sanitize(q("#update-avatar-description").value), { outputEncoding: "StorageBinaryString" });
 
-        contract.updateAvatarDescription({ _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX), _description: new_description_save })
+        contract.updateAvatarDescription({ _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX), _description: new_description_save }, GAS_TO_ATTACH)
           .then(result => {
+            for (let i = 0; i < DECOMPRESSED_AVATARS.length; i++) {
+              if (DECOMPRESSED_AVATARS[i].id == CURRENT_AVATAR_ID) {
+                DECOMPRESSED_AVATARS[i].description = sanitize(q("#update-avatar-description").value);
+              }
+            }
+            q("#update-description").innerHTML = "Updated";
+            updateThisPlayerRewards((ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards - ACTION_FEE).toLocaleString('fullwide', { useGrouping: false }));
+            CURRENT_ELIGIBLE_AMOUNT = parseFloat(utils.format.formatNearAmount((ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards)));
+            q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
 
-            q("#update-description").innerHTML = "updated";
             setTimeout(function () {
-              q("#update-description").innerHTML = "Update description";
+              q("#update-description").innerHTML = "Update description for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
               IS_UPDATING_DESCRIPTION = false;
               buildMural();
               generateCurrentAvatar();
-              watchAvatarSelection();
+              //watchAvatarSelection();
             }, 100);
+          }).catch(error => {
+            ERROR_MESSAGE(error);
           });
       } else {
         q("#update-description").classList.add("red");
         q("#update-description").classList.remove("green");
-        q("#update-description").innerHTML = "Requires minimum fee of " + ACTION_FEE / XGC_DECIMALS + " XGC";
+        q("#update-description").innerHTML = "Requires minimum fee of " + utils.format.formatNearAmount(ACTION_FEE) + " N";
         setTimeout(function () {
           q("#update-description").classList.remove("red");
           q("#update-description").classList.add("green");
-          q("#update-description").innerHTML = "Update description for 1 XGC";
+          q("#update-description").innerHTML = "Update description for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
           IS_UPDATING_DESCRIPTION = false;
         }, TIMEOUT_PROCESSING_WORDS_DELAY);
       }

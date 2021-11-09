@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>chain typing | blockchain typing</title>
+  <title>Chain Typing | Blockchain Typing</title>
   <meta name="description" content="chain typing - blockchain typing game">
   <link rel="stylesheet" href="css/style.css">
   <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
@@ -14,24 +14,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Quicksand&display=swap" rel="stylesheet">
-  <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9YEXNYWDKY"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-
-    gtag('config', 'G-9YEXNYWDKY');
-  </script>
 </head>
-
 <body>
-  <div id="cookie-compliance" class="hide">
-    <div class="cookieherocard">
-      We use cookies to improve your experience, and analyze site traffic with Google Analytics. If you continue to use
-      this site, you consent to the use of cookies.
+  <div id="error-notification" class="error-visible">
+    <div class="flex justify-content-start">
+      <div class="flex justify-content-start">
+        <div id="display-avatar-canvas"></div>
+        <div class="group">
+        </div>
+      </div>
+    </div>
+    <div id="display-error-texts">
+      <h3 >Welcome to chain typing</h3>
+      <h4 style="padding-top:15px;font-style: italic;">Play to earn typing game on NEAR</h4>
+      <h3 style="padding-top:15px;" class="green blinking">Click to Enter</h3>
     </div>
   </div>
+
   <audio id="audio-player" loop>
     <source src="https://ipfs.io/ipfs/QmRFJZun646qeTuKyumETrr86uzUimktpXPnmLiEUd1VPM" type="audio/mp3">
     <source src="https://ipfs.io/ipfs/QmUBMbpF6Lfs1qUPC5ZotaXrgEZrgvdYQYm87ap3EoBQ7H" type="audio/ogg">
@@ -39,132 +38,135 @@
   </audio>
 
   <div id="signed-out-flow" class="hide">
-
+    <div id="mobile-menu" class="hide stats-label pointer br margin-bottom">Menu</div>
     <div class="main-top-section group">
-      <div id="sign-in-button" class="green pointer stats-label stats-label-right">Login with NEAR</div>
-      <div id="game-launcher" class="hide stats-label stats-label-right pointer green ">Play Game</div>
-      <div id="eligible-rewards" class="pointer stats-label stats-label-right purple"></div>
-      <div class="stats-label stats-label-right green pointer hide" id="pending-rewards-total">+ 0 XGC</div>
-      <div class="stats-label stats-label-right hide pointer" id="account-id"></div>
-      <div id="mural-button" class="stats-label stats-label-right pointer" onclick='muralCall()'>Mural</div>
-      <div id="market-button" class="stats-label stats-label-right pointer" onclick='getMarketCall()'>Market</div>
-      <div id="get-avatar" class="hide pointer stats-label stats-label-right" onclick="getAvatarCall()">Mint</div>
-      <div id="faq-button" class="pointer stats-label stats-label-right" onclick="getFaqCall()">FAQ</div>
-      <div id="player-container">
-        <div id="play-pause-one" class="pointer stats-label stats-label-right">Music</div>
-      </div>
-      <a href="https://v2.sputnik.fund/#/simplegames.sputnik-dao.near" target="_blank">
-        <div id="governance" class="stats-label stats-label-right pointer">Gov</div>
-      </a>
-      <div id="night" class="pointer stats-label stats-label-right">Style</div>
-      <div id="xgc-stats-button" class="pointer stats-label stats-label-right"
-        style="padding:6.5px;display:flex;align-items:center;" onclick="getXGCStats()"><img src="favicons/coin.png"
-          style="width:15px;"></div>
-      <div class="stats-label stats-label-right red pointer hide" id="sign-out-button-two">Exit</div>
+      <div id="sign-in-button" class="green pointer stats-label stats-label-right br">Login with NEAR</div>
+      <div id="game-launcher-resume" class="hide stats-label stats-label-right pointer green br">Resume</div>
+      <div id="game-launcher" class="hide stats-label stats-label-right pointer green br">Restart</div>
+      <div id="eligible-rewards" class="hide pointer stats-label stats-label-right purple br"></div>
+      <div class="stats-label stats-label-right green pointer hide br" id="pending-rewards-total">+ 0 N</div>
+      <div id="mural-button" class="stats-label stats-label-right pointer br" onclick='muralCall()'>Leaderboard</div>
+      <div id="market-button" class="stats-label stats-label-right pointer br" onclick='getMarketCall()'>Market</div>
+      <div id="get-avatar" class="hide pointer stats-label stats-label-right br" onclick="getAvatarCall()">Mint</div>
+      <div class="stats-label stats-label-right hide pointer br" id="account-id"></div>
+      <div id="game-stats-button" class="pointer stats-label stats-label-right br" onclick="getGameStats()">Settings</div>
+      <div id="faq-button" class="pointer stats-label stats-label-right br" onclick="getFaqCall()">FAQ</div>
+      <div class="stats-label stats-label-right red pointer hide br" id="sign-out-button-two">Exit</div>
     </div>
-    <div id="faq">
+    <div id="faq" class="hide" style="margin-bottom:100px;">
       <div>
         <div class="faq-section">
           <h3>Welcome to Chain Typing</h3>
-          <div style="margin-top:15px;" class="flex justify-content-start">
-            <div class="flex justify-content-start">
-              <div id="display-avatar-canvas"></div>
-              <div class="group">
-              </div>
-            </div>
-          </div>
 
           <p>This is a blockchain typing game, to help improve efficiency at typing.</p>
 
-          <p>In order to play the game, it's needed to own a <b>Chain Avatar Character</b>. Each Chain Avatar is
-            represented on a <b> Mural Leaderboard</b>, of all typing characters.
-            There will only be 50 avatars available to play this early version of the game. These are listed in order
-            of most words typed correctly. <b>They may be used as a sort of advertising space, to hold a
-              description.</b> Donations will go to the game's DAO to fund a version 2 which will be play to earn.<br>
+          <p>In order to play the game, it's needed to own a <b>Chain Character</b>. Each Chain Character is
+            represented on a <b>Leaderboard</b>.
+            There will only be 50 characters available initially to play the game. These are listed by default in order of most words typed. The number of characters will increase as the game is able to scale.
+            <b>They may be used as a sort of advertising space, to hold a description.</b> Donations will go to the game's funds to help further the game.<br>
           </p>
           <p>This game is an experiment, provides no guarentees, no liability, and no warranty at all.
-            Chain Avatar creation are donations. They are non-refundable, and provide no guarentee of service.</p>
+            Chain Character minting are donations to the game's funds. They are non-refundable, and provide no guarentees of service.</p>
+            <p>
+            <h3 style="padding-top:15px;padding-bottom:15px;">Credits</h3>
+            <ul>
+              <li>Concept and coding by Michael</li>
+              <li>Smart contract advising by Danielo</li>
+              <li>With help from <a href="https://humanguild.io" class="purple" target="_blank">humanguild.io</a></li>
+              <li>Music by <a target="_blank" class="purple" href="https://patrickdearteaga.com ">patrickdearteaga.com</a>
+              </li>
+            </ul>
+            </p>
+
+              <h3 style="width:fit-content;padding:15px 0 15px 0;">
+                <a href="https://finear.xyz/#/simplegames.near" class="purple" rel="noopener" target="_blank">Simple Games Fund</a>
+              </h3>
+
+                <h3 style="width:fit-content;padding:15px 0 15px 0;"><a href="https://discord.gg/6TMX8jNpP2" class="green" target="_blank">Join our
+                    Discord!</a></h3>
         </div>
 
-        <div class="faq-section" style="border-top:none;">
-          <p>
-          <h3 style="padding-bottom:15px;">Credits</h3>
-          <ul>
-            <li>Concept and coding by Michael</li>
-            <li>Smart contract advising by Danielo</li>
-            <li>With help from <a href="https://humanguild.io" class="purple" target="_blank">humanguild.io</a></li>
-            <li>Music by <a target="_blank" class="purple" href="https://patrickdearteaga.com ">patrickdearteaga.com</a>
-            </li>
-          </ul>
-          </p>
-        </div>
-        <div class="faq-section" style="border-top:none;">
-          <h3 style="width:fit-content;padding-bottom:15px;"><a href="https://discord.gg/6TMX8jNpP2" class="green"
-              target="_blank">Join our Discord!</a></h3>
-        </div>
       </div>
     </div>
   </div>
 
-  <div id="my-account-data" class="hide faq-section">
-    <div class="flex justify-content-start">
-      <div class="flex justify-content-start">
-        <div id="account-avatar-canvas"></div>
-        <div class="group">
-        </div>
-      </div>
+  <div id="my-account-data" class="hide faq-section" style="margin-bottom:100px;">
+
+    <div class="group" style="justify-content: flex-start;padding-bottom:15px;">
+      <div class="account-data-level stats-label">Previous level reached: <span id="last_level"></span></div>
+      <div class="account-data-wpm stats-label">WPM: <span id="last_wpm"></span></div>
+      <div class="account-data-accuracy stats-label">Accuracy: <span id="last_accuracy"></span></div>
     </div>
+
     <div id="all-account-avatars"></div>
-    <div id="update-desc">
-      <input id="update-avatar-description" class="hide stats-label" style="width:90%;margin:0 5px 0 15px;"
-        placeholder="Select an avatar to edit description...">
-      <div class="group" style="justify-content: flex-start;">
-        <div class="stats-label pointer hide green" id="update-description">Update description for 1 XGC</div>
-      </div>
-    </div>
-    <div id="update-market-list" style="margin-bottom:15px;">
-      <input id="update-market-price-input" type="number" class="hide stats-label"
-        style="width:150px;margin:0 5px 0 15px;" placeholder="NEAR price to ask...">
-      <div class="group" style="justify-content: flex-start;">
-        <div class="stats-label pointer green hide" id="update-market-price">Set asking price for 1 XGC</div>
-        <div class="stats-label pointer red hide" id="remove-this-listing-button"
-          style="margin-left:15px;margin-top:15px;">Remove listing</div>
-      </div>
+
+    <div class="group" style="justify-content: flex-start;margin-top:30px;margin-bottom:15px;">
+      <div class="stats-label pointer purple br selected" id="view-current-user-settings">View character settings</div>
     </div>
 
-    <div class="group" style="justify-content: flex-start;">
-      <div class="stats-label" id="my-account-link">My characters and stats</div>
-      <div class="account-data-level stats-label ">Previous level reached <span id="last_level"></span></div>
-      <div class="account-data-wpm stats-label ">WPM <span id="last_wpm"></span></div>
-      <div class="account-data-accuracy stats-label">Accuracy <span id="last_accuracy"></span></div>
-      <!--<div class="account-data-highest stats-label">Highest level <span id="highest-level-achieved"></span></div>-->
+    <div id="current-user-settings" class="hide">
+      <div id="update-desc">
+        <input id="update-avatar-description" class="hide stats-label br" style="width:90%;margin:0 5px 0 0px;"
+          placeholder="Select an avatar to edit description...">
+        <div class="group" style="justify-content: flex-start;">
+          <div class="stats-label pointer hide green br" id="update-description"></div>
+        </div>
+      </div>
+
+      <div id="update-market-list" style="margin-bottom:15px;">
+        <input id="update-market-price-input" type="number" class="hide stats-label br" style="width:150px;margin:0 5px 0 0px;" placeholder="NEAR price to ask...">
+        <div class="group" style="justify-content: flex-start;">
+          <div class="stats-label pointer green hide br" id="update-market-price"></div>
+          <div class="stats-label pointer red hide br" id="remove-this-listing-button" style="margin-left:15px;margin-top:15px;">Remove listing</div>
+        </div>
+      </div>
+
+      <div id="choose-avatar-update" class="hide">
+        <div style="padding-bottom:15px;" class="title" id="design-and-mint-update">Update character #</div>
+        <div id="current-color-selection-update" class="pixel" style="margin-right:20px;border:1px solid white;"></div>
+
+        <div id="pallet-update">
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+          <div class="pixel pointer"></div>
+        </div>
+
+        <div id="avatar-canvas-update"></div>
+
+        <div style="margin-top:5px;" class="group" style="flex-direction: column;">
+          <div id="update-character-button" class="br pointer stats-label stats-label-left green">Update character for 0.02 N</div>
+        </div>
+        <div style="padding:15px 0 15px 0;font-size:0.8rem;color:gray;"><b>Note:</b> Sexual, racist or violent drawings are not allowed, and will be deleted. There are no refunds for donations.</div>
+      </div>
+
     </div>
+
+
   </div>
-  <div id="xgc-stats" class="hide faq-section" style="position:relative;">
-    <h3>XGC Stats</h3>
-    <img src="favicons/coin.png" style="width:50px;margin-top:15px;">
-    <p style="padding-top:15px;">XGC (Game coin) is the Simple Games in-game token which can be used to update
-      descriptions, set avatars on the marketplace, and to earn by typing. There is no IDO, no airdrops, and Simple
-      Games does not take investments of any kind in XGC. It is simply used as a mechanism for play-to-earn
-      functionality.</p>
-    <h3 style="padding-top:15px;" id="xgc-supply"></h3>
-    <h3 style="padding-top:15px;" id="xgc-my-balance"></h3>
-    <h3 style="padding-top:15px;" id="xgc-game-balance"></h3>
-    <h3 style="padding-top:15px;" id="xgc-player-balances"></h3>
-  </div>
-  <div id="mural-box" class="hide faq-section" style="position:relative;">
+
+  <div id="mural-box" class="hide faq-section" style="position:relative;margin-bottom:100px;padding:15px;padding-bottom:50px;">
     <div id="sorting" class="group" style="justify-content: flex-start;">
       <div class="stats-label pointer" id="words-sort">Words Rank</div>
       <div class="stats-label pointer" id="rank-sort">Levels Rank</div>
       <div class="stats-label pointer" id="mint-ids-sort">Mint Rank</div>
     </div>
     <div id="contract-linking" class="group" style="justify-content: flex-start;">
-      <div class="stats-label" id="contract-link"></div>
+    <div class="stats-label" id="legend">LEGEND: Level.Words.Account</div>
     </div>
     <div id="mural"></div>
   </div>
 
-  <div id="market-box" class="hide faq-section" style="position:relative;">
+  <div id="market-box" class="hide faq-section" style="position:relative;margin-bottom:100px;padding:15px;padding-bottom:50px;">
     <div id="sorting" class="group" style="justify-content: flex-start;">
       <div class="stats-label pointer" id="words-sort-market">Words Rank</div>
       <div class="stats-label pointer" id="rank-sort-market">Levels Rank</div>
@@ -172,8 +174,7 @@
       <div class="stats-label pointer" id="price-sort-market">Price</div>
     </div>
     <div id="contract-linking" class="group" style="justify-content: flex-start;">
-      <div class="stats-label" id="market-fee-label">0.05 N fixed market fee</div>
-      <div class="stats-label" id="contract-link-market"></div>
+      <div class="stats-label" id="market-fee-label"></div>
     </div>
     <div id="market-container"></div>
   </div>
@@ -183,19 +184,18 @@
       <div class="signed-in-flow group hide">
         <div class="group">
           <div id="back-to-inner-menu" onclick="displayInnerMenu(true)"
-            class="pointer stats-label stats-label-right green">Back to menu</div>
+            class="pointer stats-label stats-label-right green br">Back</div>
 
-          <div id="earned-rewards-withdrawal" class="stats-label stats-label-right green"><span
-              id="earned-rewards-total"></span></div>
-          <div class="stats-label stats-label-right hide"><span id="level"></span></div>
-          <div class="stats-label stats-label-right hide"><span id="wpm"></span></div>
-          <div class="stats-label stats-label-right hide"><span id="accuracy"></span></div>
-          <div class="stats-label stats-label-right"><span id="minutes">00</span>:<span id="seconds">00</span></div>
+          <div id="earned-rewards-withdrawal" class="stats-label stats-label-right green br"><span id="earned-rewards-total"></span></div>
+          <div class="stats-label stats-label-right hide br"><span id="level"></span></div>
+          <div class="stats-label stats-label-right hide br mobile-stats-item"><span id="wpm"></span></div>
+          <div class="stats-label stats-label-right hide br mobile-stats-item"><span id="accuracy"></span></div>
+          <div class="stats-label stats-label-right br mobile-stats-item"><span id="minutes">00</span>:<span id="seconds">00</span></div>
           <div id="player-container">
-            <div id="play-pause" class="pointer stats-label stats-label-right purple">Music</div>
+            <div id="play-pause" class="pointer stats-label stats-label-right purple br" style="padding:12px;">&#9836;</div>
           </div>
-          <div id="night-two" class="pointer stats-label stats-label-right">Style</div>
-          <div class="stats-label stats-label-right red pointer" id="sign-out-button">Logout</div>
+          <div id="night-two" class="hide pointer stats-label stats-label-right br" style="padding:12px;">&#x2600;</div>
+          <div class="stats-label stats-label-right red pointer br" id="sign-out-button">Exit</div>
 
         </div>
       </div>
@@ -221,8 +221,78 @@
     </div>
   </div>
 
+  <div class="ticker-wrap" style="z-index:5;">
+      <div id="ticker-inner" class="ticker"></div>
+  </div>
+
+  <div id="game-stats" class="hide faq-section" style="position:relative;margin-bottom:100px;">
+        <div style="display:flex;justify-content: flex-start;margin-bottom:15px;">
+
+          <div id="player-container">
+            <div id="play-pause-one" class="pointer stats-label stats-label-right br selected" style="padding:12px;">Play / Pause Music</div>
+          </div>
+          <div id="night" class="hide pointer stats-label stats-label-right br selected" style="padding:12px;">Change Day / Night Style</div>
+          </div>
+    <table id="game-stats-table">
+      <tr class="green">
+        <td>Current Eligible Rewards</td>
+        <td id="stats-eligible-rewards"></td>
+      </tr>
+      <tr class="green">
+        <td>Market Volume</td>
+        <td id="stats-market-volume"></td>
+      </tr>
+      <tr class="green">
+        <td>Pay rate per word</td>
+        <td id="stats-pay-rate"></td>
+      </tr>
+      <tr class="hide green">
+        <td>Total Paid out</td>
+        <td id="stats-total-paid-out"></td>
+      </tr>
+      <tr class="green">
+        <td>Total earned by players</td>
+        <td id="stats-total-earned-players"></td>
+      </tr>
+      <tr class="green">
+        <td>Counter</td>
+        <td id="counter"></td>
+      </tr>
+      <tr class="hide">
+        <td>Maximum Current Avatars</td>
+        <td id="stats-maximum-avatars"></td>
+      </tr>
+      <tr class="hide">
+        <td>Avatar Mint Price</td>
+        <td id="stats-avatar-floor-price"></td>
+      </tr>
+      <tr class="hide">
+        <td>Action Fee</td>
+        <td id="stats-action-fee"></td>
+      </tr>
+      <tr class="hide">
+        <td>Market Royalty</td>
+        <td id="stats-market-royalty"></td>
+      </tr>
+      <tr class="hide">
+        <td>Minimum Withdrawal Amount</td>
+        <td id="stats-minimum-withdrawal"></td>
+      </tr>
+
+      <tr class="hide">
+        <td>Total System Fees</td>
+        <td id="stats-total-fees-earned"></td>
+      </tr>
+
+      <tr class="hide">
+        <td>Withdrawal Fee</td>
+        <td id="stats-withdrawal-fee"></td>
+      </tr>
+    </table>
+  </div>
+
   <div id="choose-avatar" class="faq-section hide">
-    <div style="padding-bottom:15px;"><b>Design and mint chain avatar</b></div>
+    <div style="padding-bottom:15px;" class="title" id="design-and-mint">Design and mint chain avatar</div>
     <div id="current-color-selection" class="pixel" style="margin-right:20px;border:1px solid white;"></div>
     <div id="pallet">
       <div class="pixel pointer"></div>
@@ -241,28 +311,31 @@
     </div>
     <div id="avatar-canvas"></div>
 
-    <input id="new-avatar-description" class="stats-label" style="width:90%;margin-top:5px;"
+    <input id="new-avatar-description" class="stats-label br" style="width:90%;margin-top:5px;"
       placeholder="Enter public description...">
     <div style="margin-top:5px;" class="group" style="flex-direction: column;">
-      <div id="mint-character-button" class="pointer stats-label stats-label-left green">Donate</div>
+      <div id="mint-character-button" class="br pointer stats-label stats-label-left green">Donate</div>
     </div>
     <div style="padding:15px 0 0 0;font-size:0.8rem;color:gray;"><b>Note:</b> Sexual, racist or violent drawings are not
       allowed, and will be
       deleted. There are no refunds for donations.</div>
   </div>
+
+
   <script>
     function q(input) { return document.querySelector(input); };
-    function cookieProcess() {
-      if (getCookie("chaintyping_compliance")) {
-        q("#cookie-compliance").remove();
+    let ACCESS_KEY_DEPLETED = false;
+    q("#error-notification").addEventListener("click", function (event) {
+      if (!ACCESS_KEY_DEPLETED) {
+        q("#error-notification").classList.add("hide");
+        q("#error-notification").classList.remove("error-visible");
       } else {
-        q("#cookie-compliance").classList.remove("hide");
-        q("#cookie-compliance").addEventListener("click", function () {
-          q("#cookie-compliance").remove();
-          setCookie('chaintyping_compliance', 'true', 7);
-        });
+        wallet.signOut()
+        window.location.replace(window.location.origin + window.location.pathname)
       }
-    }
+    });
+
+
     function setCookie(name, value, days) {
       var expires = "";
       if (days) {
@@ -288,58 +361,98 @@
       document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
 
-    cookieProcess();
-
     q("#audio-player").volume = 0.1;
     function muralCall() {
       window.location.hash = "/";
+      q("#mural-button").classList.add("selected");
+      q("#game-stats-button").classList.remove("selected");
+      q("#market-button").classList.remove("selected");
+      q("#faq-button").classList.remove("selected");
+      q("#get-avatar").classList.remove("selected");
+      q("#account-id").classList.remove("selected");
       q("#faq").classList.add("hide"); q("#mural-box").classList.remove("hide");;
       q("#market-box").classList.add("hide");
-      q("#xgc-stats").classList.add("hide");
+      q("#my-account-data").classList.add("hide");
+      q("#choose-avatar").classList.add("hide");
+      q("#game-stats").classList.add("hide");
+    }
+    function getGameStats() {
+      window.location.hash = "/stats";
+      q("#mural-button").classList.remove("selected");
+      q("#game-stats-button").classList.add("selected");
+      q("#market-button").classList.remove("selected");
+      q("#faq-button").classList.remove("selected");
+      q("#get-avatar").classList.remove("selected");
+      q("#account-id").classList.remove("selected");
+      q("#choose-avatar").classList.add("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
+      q("#market-box").classList.add("hide");
+      q("#game-stats").classList.remove("hide");
+      q("#faq").classList.add("hide");
     }
     function getAvatarCall() {
       window.location.hash = "/mint";
+      q("#get-avatar").classList.add("selected");
+      q("#faq-button").classList.remove("selected");
+      q("#mural-button").classList.remove("selected");
+      q("#game-stats-button").classList.remove("selected");
+      q("#market-button").classList.remove("selected");
+      q("#account-id").classList.remove("selected");
       q("#choose-avatar").classList.remove("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
       q("#market-box").classList.add("hide");
-      q("#xgc-stats").classList.add("hide");
+      q("#game-stats").classList.add("hide");
     }
     function getFaqCall() {
       window.location.hash = "/faq";
+      q("#faq-button").classList.add("selected");
+      q("#get-avatar").classList.remove("selected");
+      q("#mural-button").classList.remove("selected");
+      q("#game-stats-button").classList.remove("selected");
+      q("#market-button").classList.remove("selected");
+      q("#account-id").classList.remove("selected");
       q("#faq").classList.remove("hide"); q("#mural-box").classList.add("hide");
       q("#market-box").classList.add("hide");
-      q("#xgc-stats").classList.add("hide");
+      q("#game-stats").classList.add("hide");
     }
     function getMarketCall() {
       window.location.hash = "/market";
+      q("#market-button").classList.add("selected");
+      q("#get-avatar").classList.remove("selected");
+      q("#faq-button").classList.remove("selected");
+      q("#game-stats-button").classList.remove("selected");
+      q("#mural-button").classList.remove("selected");
+      q("#account-id").classList.remove("selected");
       q("#faq").classList.add("hide");
       q("#choose-avatar").classList.add("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
       q("#market-box").classList.remove("hide");
-      q("#xgc-stats").classList.add("hide");
+      q("#game-stats").classList.add("hide");
     }
-    function getXGCStats() {
-      window.location.hash = "/xgc";
-      q("#faq").classList.add("hide");
-      q("#choose-avatar").classList.add("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
-      q("#market-box").classList.add("hide");
-      q("#xgc-stats").classList.remove("hide");
-    }
+
     let muralBtn = q("#mural-button");
 
     muralBtn.addEventListener('click', function () {
       q("#choose-avatar").classList.add("hide");
       q("#mural-box").classList.remove("hide");
       q("#my-account-data").classList.add("hide");
-      q("#xgc-stats").classList.add("hide");
+      q("#faq").classList.add("hide");
+      q("#game-stats").classList.add("hide");
+      window.location.hash = "/leaderboard";
     })
     let accountBtn = q("#account-id");
 
     accountBtn.addEventListener('click', function () {
       window.location.hash = "/account";
+      q("#account-id").classList.add("selected");
+      q("#market-button").classList.remove("selected");
+      q("#get-avatar").classList.remove("selected");
+      q("#faq-button").classList.remove("selected");
+      q("#game-stats-button").classList.remove("selected");
+      q("#mural-button").classList.remove("selected");
+
       q("#choose-avatar").classList.add("hide");
       q("#mural-box").classList.add("hide");
       q("#my-account-data").classList.remove("hide");
       q("#market-box").classList.add("hide");
-      q("#xgc-stats").classList.add("hide");
+      q("#game-stats").classList.add("hide");
     })
 
     let night = q("#night");
@@ -358,7 +471,7 @@
     function checkStyle() {
       let styling = getCookie("chaintyping_style");
       if (styling != null) {
-        if (styling == "true") {
+        if (styling == "true"){
           body.classList.add("night");
         } else {
           body.classList.remove("night");
@@ -392,10 +505,65 @@
     });
 
 
+
+
+  function updateCounter(counter) {
+    let current_v = counter.split("\n");
+    current_v = current_v[0].split(":")[1];
+    q("#counter").innerHTML = current_v;
+  };
+
+  function getDatas(callback) {
+    var requestOptions = {
+      method: 'GET',
+    };
+
+    fetch("backend/counter.php", requestOptions)
+      .then(response => response.text())
+      .then(result => {
+        let resulting_data = JSON.parse(result);
+        updateCounter(resulting_data.counter);
+        callback();
+      })
+      .catch(error => console.log('error', error));
+  };
+
+  getDatas(function () {
+
+    function updateCounter() {
+      var requestOptions = {
+        method: 'POST',
+        body: {update: "update"}
+      };
+
+      fetch("backend/counter_writer.php", requestOptions)
+        .then(response => response.text())
+        .then(result => {
+        })
+        .catch(error => console.log('error', error));
+
+    }
+
+    updateCounter();
+  });
+  let MOBILE_MENU_OPEN = false;
+  q("#mobile-menu").addEventListener("click", function(){
+    if (!MOBILE_MENU_OPEN) {
+      MOBILE_MENU_OPEN = true;
+      q("#mobile-menu").classList.add("selected");
+      q("#mobile-menu").classList.remove("margin-bottom");
+      q(".main-top-section.group").classList.add("mobile-visible");
+    } else {
+      MOBILE_MENU_OPEN = false;
+      q("#mobile-menu").classList.remove("selected");
+      q("#mobile-menu").classList.add("margin-bottom");
+      q(".main-top-section.group").classList.remove("mobile-visible");
+    }
+  });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.41.0/dist/near-api-js.min.js"></script>
   <script id="lzutf8" src="https://cdn.jsdelivr.net/npm/lzutf8/build/production/lzutf8.min.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/main.js"></script>
 
 </body>
 

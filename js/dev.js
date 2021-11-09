@@ -1,8 +1,9 @@
+
 const near = new nearApi.Near({
   keyStore: new nearApi.keyStores.BrowserLocalStorageKeyStore(),
   networkId: 'testnet',
-  nodeUrl: 'https://rpc.testnet.near.org',
-  walletUrl: 'https://wallet.testnet.near.org'
+  nodeUrl: 'https://rpc.mainnet.near.org',
+  walletUrl: 'https://wallet.mainnet.near.org'
 });
 
 const wallet = new nearApi.WalletConnection(near, 'my-app');
