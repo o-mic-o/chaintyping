@@ -10,6 +10,7 @@ export class ChainAvatarsForUser {
   correctWordTotals: Array<u64>;
   descriptions: Array<string>;
   isBlockList: Array<boolean>;
+  isBanned: Array<boolean>;
 
   constructor(_id: u32, _address: string, _data: string, _description: string, _highestLevel: u32, _correctWordTotal: u64) {
     this.ids = new Array<u32>();
@@ -25,6 +26,17 @@ export class ChainAvatarsForUser {
     this.descriptions.push(_description);
     this.isBlockList = new Array<boolean>();
     this.isBlockList.push(false);
+    this.isBanned = new Array<boolean>();
+    this.isBanned.push(false);
+  }
+  setIsBanned(_avatarIndex: u32): void {
+    this.isBanned[_avatarIndex] = true;
+  }
+  removeIsBanned(_avatarIndex: u32): void {
+    this.isBanned[_avatarIndex] = false;
+  }
+  isOnBanned(_avatarIndex: u32): boolean {
+    return this.isBanned[_avatarIndex];
   }
   setIsBlockList(_avatarIndex: u32): void {
     this.isBlockList[_avatarIndex] = true;
@@ -57,6 +69,7 @@ export class ChainAvatarsForUser {
     this.highestLevels.push(_highestLevel);
     this.correctWordTotals.push(_correctWordTotal);
     this.isBlockList.push(false);
+    this.isBanned.push(false);
   }
   removeThisAvatar(_avatarIndex: u32): void {
     this.ids.splice(_avatarIndex, 1);
@@ -65,6 +78,7 @@ export class ChainAvatarsForUser {
     this.highestLevels.splice(_avatarIndex, 1);
     this.correctWordTotals.splice(_avatarIndex, 1);
     this.isBlockList.splice(_avatarIndex, 1);
+    this.isBanned.splice(_avatarIndex, 1);
   }
 
   resetBlockList(): void {
@@ -73,7 +87,12 @@ export class ChainAvatarsForUser {
       this.isBlockList.push(false);
     }
   }
-
+  resetBanList(): void {
+    this.isBanned = new Array<boolean>();
+    for (var i = 0; i < this.ids.length; i++) {
+      this.isBanned.push(false);
+    }
+  }
   isOwnedByMe(_avatarId: u32): boolean {
     if (this.ids.indexOf(_avatarId) > -1) {
       return true;
@@ -92,9 +111,7 @@ export class Player {
   previousWpm: u32;
   previousAccuracy: u32;
   previousLevelCompleted: u32;
-
   address: string;
-  wordCountEligibleForRewards: u64;
   rewards: u128;
   lastBlockIndex: u64;
 
@@ -136,11 +153,9 @@ export class Player {
 
 export class Game {
   avatarMintCount: u32;
-  wordsList: string;
 
-  constructor(_avatarMintCount: u32, _wordsList: string) {
+  constructor(_avatarMintCount: u32) {
     this.avatarMintCount = _avatarMintCount
-    this.wordsList = _wordsList;
   }
 
   increaseAvatarMintCount(): void {
@@ -148,9 +163,6 @@ export class Game {
   }
   decreaseAvatarMintCount(): void {
     this.avatarMintCount--;
-  }
-  updateWordsList(_wordsList: string): void {
-    this.wordsList = _wordsList;
   }
 
 }
@@ -194,7 +206,7 @@ export class GameRewardsState {
   marketVolume: u128;
 
   constructor() {
-    this.payRate = u128.from("200000000000000000000");
+    this.payRate = u128.from("100000000000000000000");
     this.minimumWithdrawalAmount = u128.from("20000000000000000000000");
     this.withdrawalFee = u128.from("10000000000000000000000");
     this.currentEligibleRewards = u128.from("0");
@@ -202,7 +214,7 @@ export class GameRewardsState {
     this.avatarPrice = u128.from("2000000000000000000000000");
     this.actionFee = u128.from("10000000000000000000000");
     this.updateCharacterFee = u128.from("20000000000000000000000");
-    this.maxAvatars = 50;
+    this.maxAvatars = 30;
     this.totalPaidOut = u128.from("0");
     this.totalFeesEarned = u128.from("0");
     this.marketVolume = u128.from("0");

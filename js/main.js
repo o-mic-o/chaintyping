@@ -1,6 +1,42 @@
-const CONTRACT = 'chain-typing.simplegames.near';
+const CONTRACT = "chaintyping-game.near"; //TESTNET: 'dev-1637596638965-95668057112174';
+const BACKEND_URL = "https://chaintyping-backend-mainnet.vercel.app/api";
 const NEAR_NETWORK_NAME = ".near";
+const NETWORK_ID_LOCAL = "mainnet";
 const GAS_TO_ATTACH = 100000000000000;
+let CURRENT_LANGUAGE = "english";
+
+function initSyncingLocally() {
+
+  fetch(BACKEND_URL + "/sync_locally").then(function (response) {
+    return response.json();
+  }).then(function (data) {
+  }).catch(error => {
+    ERROR_MESSAGE(error);
+  });
+};
+
+initSyncingLocally();
+
+function setCounter() {
+  function updateCounter(counter) {
+    q("#counter").innerHTML = counter;
+  };
+
+  fetch(BACKEND_URL + "/set_counter", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ update: "update" })
+  }).then(response => response.json())
+    .then(result => {
+      updateCounter(result.count);
+    }).catch(error => {
+      ERROR_MESSAGE(error);
+    });
+};
+
+setCounter();
 
 let game;
 const NEAR_DECIMALS = 4;
@@ -16,7 +52,7 @@ let IS_UPDATING_DESCRIPTION = false;
 let SET_SORTING_WATCHERS_ONCE = false;
 let CURRENT_PLAYER_INDEX = "";
 let IN_CURRENT_GAME = false;
-
+let CURRENT_AVATAR_IS_BANNED = false;
 let CURRENT_AVATAR_TO_SUBMIT_INDEX = ""; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
 let ALL_MARKET_DATA = "";
 let IS_UPDATING_ORDER = false;
@@ -42,10 +78,10 @@ function ERROR_MESSAGE(error) {
   q("#error-notification").classList.remove("hide");
   q("#error-notification").classList.add("error-visible");
   q("#display-error-texts").innerHTML = "";
-  q("#display-error-texts").innerHTML = '<h3>An error occured.</h3><h3 style="padding-top:15px;">Please logout then log back in.</h3>';
+  q("#display-error-texts").innerHTML = '<h3>An error occured.</h3><h3 style="padding-top:15px;">Please refresh, then try logging out and in.</h3>';
   q("#display-error-texts").innerHTML += '<h4 style="padding-top:15px;font-style: italic;">' + error + '</h4>';
-  q("#display-error-texts").innerHTML += '<h3 style="padding-top:15px;" class="red blinking">Click to logout</h3>'
-  ACCESS_KEY_DEPLETED = true;
+  q("#display-error-texts").innerHTML += '<h3 style="padding-top:15px;" class="red blinking">Click to refresh.</h3>'
+  INTERNAL_GAME_ERROR = true;
 }
 function matchingCharArray(word_one, word_two) {
   if (word_one.length == word_two.length) {
@@ -76,11 +112,10 @@ const { utils } = nearApi
 
 let ACTION_FEE = utils.format.parseNearAmount("0.01");
 
-const wallet = new nearApi.WalletConnection(near, 'my-app');
+const wallet = new nearApi.WalletConnection(near, 'chaintyping-game');
 
 const contract = new nearApi.Contract(wallet.account(), CONTRACT, {
   viewMethods: [
-    'getWordsList',
     'getPlayers',
     'getAvatars',
     'getOrders',
@@ -93,12 +128,10 @@ const contract = new nearApi.Contract(wallet.account(), CONTRACT, {
     'updateAvatarCharacter',
     'moderatorBlockListAvatar',
     'moderatorResetBlockList',
+    'moderatorResetBanList',
+    'moderatorBanAvatar',
 
-    'getLevelWords',
-    'setWordList',
     'mintAvatar',
-    'updateLevel',
-    'submitLastLevelPlayed',
     'getThisPlayerAddress',
     'sendDonations',
     'updateAvatarDescription',
@@ -140,15 +173,15 @@ if (!wallet.isSignedIn()) {
     getPublicOrders();
   });
 
-  //getXGCTotalSupply();
-
 } else {
 
   button.classList.add("hide");
-  let faqItems = document.querySelectorAll(".faq-section");
+
+  /*let faqItems = document.querySelectorAll(".faq-section");
   for (var i = 0; i < faqItems.length; i++) {
     faqItems[i].classList.add("hide");
-  }
+  }*/
+
   displayInnerMenu(false);
   IS_PUBLIC_PLAYERS = false;
   getPlayers(function () {
@@ -185,11 +218,13 @@ function hashMapper() {
       q("#game-stats-button").click();
     }, 1);
   } else if (wallet.isSignedIn()) {
-    q("#mural-button").classList.add("selected");
+    //q("#mural-button").classList.add("selected");
+    q("#mural-box").classList.add("hide")
+    q("#faq").classList.remove("hide");
+    q("#faq-button").classList.add("selected");
   } else {
     q("#faq").classList.remove("hide");
     q("#faq-button").classList.add("selected");
-
   }
 }
 hashMapper();
@@ -199,7 +234,7 @@ function displayInnerMenu(isSwitchingFromGame) {
   q("#sign-out-button-two").classList.remove("hide");
   q("#signed-out-flow").classList.remove("hide");
   q("#account-id").classList.remove("hide");
-  q("#faq-button").classList.add("hide");
+  //q("#faq-button").classList.add("hide");
   q("#get-avatar").classList.remove("hide");
   //q("#game-stats-button").classList.remove("hide");
   q("#account-id").innerHTML = wallet._authData.accountId.split(NEAR_NETWORK_NAME)[0];
@@ -220,21 +255,17 @@ document.getElementById('sign-in-button').addEventListener('click', () => {
     wallet.requestSignIn({
       contractId: CONTRACT,
       methodNames: [
-        'getWordsList',
         'getPlayers',
         'getAvatars',
         'initContract',
         'initPlayerRewards',
-        'setWordList',
         'updateAvatarCharacter',
         'moderatorBlockListAvatar',
         'moderatorResetBlockList',
+        'moderatorResetBanList',
+        'moderatorBanAvatar',
 
         'mintAvatar',
-        'getWordsList',
-        'getLevelWords',
-        'updateLevel',
-        'submitLastLevelPlayed',
         'getThisPlayerAddress',
         'sendDonations',
         'updateAvatarDescription',
@@ -278,9 +309,35 @@ document.getElementById('sign-out-button-two').addEventListener('click', () => {
   window.location.replace(window.location.origin + window.location.pathname)
 });
 
+async function getSignature() {
+  let signedMsg = await near.connection.signer.signMessage(wallet._authData.accountId, wallet._authData.accountId, NETWORK_ID_LOCAL)
+  const signature = Buffer.from(signedMsg.signature).toString('hex')
+  const pubKey = Buffer.from(signedMsg.publicKey.data).toString('hex')
+
+  let to_submit = {
+    "accountId": wallet._authData.accountId,
+    "pubkey": pubKey,
+    "signature": signature
+  };
+  return to_submit;
+  /*
+    fetch(BACKEND_URL + "/verify_signature", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(to_submit)
+    }).then((res)=>{
+      return res.json();
+    }).then((data)=>{
+      console.log(data);
+    });
+  */
+};
+
 function signedInProcess() {
 
-  getAvatars(function () {
+  getAvatars(true, function () {
     getPublicOrders();
     buildMural();
     watchDonationButton();
@@ -288,8 +345,15 @@ function signedInProcess() {
     availableRewardsWatcher();
     if (!IS_LOCKED) {
       q("#game-launcher").classList.remove("hide");
-      generateCurrentAvatar();
-      watchAvatarSelection();
+
+      generateCurrentAvatar(function () {
+        watchAvatarSelection(function () {
+          setTimeout(function () {
+            q("#all-account-avatars .selected-avatar .descriptions").click();
+          }, 500);
+        });
+      });
+
       q("#view-current-user-settings").addEventListener("click", function () {
         let user_settings = q("#current-user-settings");
         if (user_settings.classList.contains("hide")) {
@@ -323,7 +387,7 @@ function buildMural() {
   q("#mural").innerHTML = "";
 
   for (var i = 0; i < DECOMPRESSED_AVATARS.length; i++) {
-    if (DECOMPRESSED_AVATARS[i].isBlockList) { }
+    if (DECOMPRESSED_AVATARS[i].isBlockList || DECOMPRESSED_AVATARS[i].isBanned) { }
     else {
       q("#mural").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[i], false);
     }
@@ -336,7 +400,10 @@ function buildMarket() {
   q("#market-container").innerHTML = "";
 
   for (var i = 0; i < ALL_DECOMPRESSED_MARKET_DATA.length; i++) {
-    if (!ALL_DECOMPRESSED_MARKET_DATA[i].forSale) { }
+    let findThisAvatar = findAvatarFromId(ALL_DECOMPRESSED_MARKET_DATA[i].avatarId);
+
+    if (findThisAvatar.isBlockList || findThisAvatar.isBanned) { }
+    else if (!ALL_DECOMPRESSED_MARKET_DATA[i].forSale) { }
     else {
       q("#market-container").innerHTML += buildMarketCanvas(ALL_DECOMPRESSED_MARKET_DATA[i], findAvatarFromId(ALL_DECOMPRESSED_MARKET_DATA[i].avatarId));
     }
@@ -387,7 +454,7 @@ function proceedToGame() {
       q("#game-start-lost-overlay").classList.remove("hide");
       bootUpGame();
     });
-    q("#game-launcher-resume").addEventListener("click", function () {
+    /*q("#game-launcher-resume").addEventListener("click", function () {
       q("#signed-out-flow").classList.add("hide");
       q("#choose-avatar").classList.add("hide");
       q("#market-box").classList.add("hide");
@@ -398,7 +465,7 @@ function proceedToGame() {
       q("#game-start-lost-overlay").classList.remove("hide");
       START_LEVEL = ALL_PLAYERS[CURRENT_PLAYER_INDEX].previousLevelCompleted + 1;
       bootUpGame();
-    });
+    });*/
   }
 }
 
@@ -435,10 +502,23 @@ function moderatorBlockListAvatar(username, avatarIndex) {
     .then(result => {
       console.log(result);
     });
+};
+
+function moderatorBanAvatar(username, avatarIndex) {
+  contract.moderatorBanAvatar({ _username: username, _avatarIndex: avatarIndex })
+    .then(result => {
+      console.log(result);
+    });
 }
 
 function moderatorResetBlockList(username) {
   contract.moderatorResetBlockList({ _username: username })
+    .then(result => {
+      console.log(result);
+    });
+}
+function moderatorResetBanList(username) {
+  contract.moderatorResetBanList({ _username: username })
     .then(result => {
       console.log(result);
     });
@@ -600,8 +680,7 @@ function populateStatsTable() {
   for (var i = 0; i < ALL_PLAYERS.length; i++) {
     total_earned_by_players += parseFloat(utils.format.formatNearAmount(ALL_PLAYERS[i].rewards));
   }
-  q("#stats-total-earned-players").innerHTML = total_earned_by_players.toFixed(NEAR_DECIMALS) + " Ⓝ";
-
+  q("#stats-in-game-earned").innerHTML = total_earned_by_players.toFixed(NEAR_DECIMALS) + " Ⓝ";
   q("#stats-maximum-avatars").innerHTML = GAME_REWARDS_STATE_IN_NEAR.maxAvatars;
   q("#stats-minimum-withdrawal").innerHTML = utils.format.formatNearAmount(GAME_REWARDS_STATE_IN_NEAR.minimumWithdrawalAmount) + " Ⓝ";
   q("#stats-pay-rate").innerHTML = GAME_REWARDS_STATE_IN_NEAR.payRate + " Ⓝ";
@@ -673,7 +752,8 @@ function decompressAvatarData() {
         correctWordTotal: ORIGINAL_AVATAR_DATA[i].correctWordTotals[j],
         id: ORIGINAL_AVATAR_DATA[i].ids[j],
         address: ORIGINAL_AVATAR_DATA[i].address,
-        isBlockList: ORIGINAL_AVATAR_DATA[i].isBlockList[j]
+        isBlockList: ORIGINAL_AVATAR_DATA[i].isBlockList[j],
+        isBanned: ORIGINAL_AVATAR_DATA[i].isBanned[j]
       });
     }
   }
@@ -681,7 +761,7 @@ function decompressAvatarData() {
   DECOMPRESSED_AVATARS = newAvatarDatas;
 };
 
-async function getAvatars(callback) {
+async function getAvatars(modify_current_avatar_id, callback) {
   contract.getAvatars({ start: 0, end: 50 })
     .then(result => {
       contract.getAvatars({ start: 50, end: 100 })
@@ -692,8 +772,10 @@ async function getAvatars(callback) {
           for (var k = 0; k < ORIGINAL_AVATAR_DATA.length; k++) {
             if (ORIGINAL_AVATAR_DATA[k].address == wallet._authData.accountId) {
               for (var a = 0; a < ORIGINAL_AVATAR_DATA[k].ids.length; a++) {
-                CURRENT_AVATAR_TO_SUBMIT_INDEX = a; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
-                CURRENT_AVATAR_ID = ORIGINAL_AVATAR_DATA[k].ids[a];
+                if (modify_current_avatar_id) {
+                  CURRENT_AVATAR_TO_SUBMIT_INDEX = a; //ACTUAL INDEX OF THE PERSONS AVATAR IN THIER SPECIFIC ARRAY!
+                  CURRENT_AVATAR_ID = ORIGINAL_AVATAR_DATA[k].ids[a];
+                }
                 wasFound = true;
               }
             }
@@ -731,6 +813,18 @@ function convertDecompressedIndexToUsersArrayIndex() {
       for (var s = 0; s < ORIGINAL_AVATAR_DATA[j].ids.length; s++) {
         if (CURRENT_AVATAR_ID == ORIGINAL_AVATAR_DATA[j].ids[s]) {
           return s;
+        }
+      }
+    }
+  }
+};
+
+function convertDecompressedIndexToUsersArrayIndexGetBanned() {
+  for (var j = 0; j < DECOMPRESSED_AVATARS.length; j++) {
+    if (ORIGINAL_AVATAR_DATA[j].address == wallet._authData.accountId) {
+      for (var s = 0; s < ORIGINAL_AVATAR_DATA[j].ids.length; s++) {
+        if (CURRENT_AVATAR_ID == ORIGINAL_AVATAR_DATA[j].ids[s]) {
+          return ORIGINAL_AVATAR_DATA[j].isBanned[s];
         }
       }
     }
@@ -796,14 +890,16 @@ async function getPlayers(callback) {
 
             if (wasFound) {
               updateLastLevelPlayed(result, true);
-              if (parseInt(ALL_PLAYERS[CURRENT_PLAYER_INDEX].previousLevelCompleted) >= 2) {
+
+              /*if (parseInt(ALL_PLAYERS[CURRENT_PLAYER_INDEX].previousLevelCompleted) >= 2) {
                 q("#game-launcher-resume").classList.remove("hide");
               } else {
                 q("#game-launcher-resume").classList.add("hide");
-              }
+              }*/
+
               CURRENT_ELIGIBLE_AMOUNT = parseFloat(utils.format.formatNearAmount((ALL_PLAYERS[CURRENT_PLAYER_INDEX].rewards)));
-              q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT) + " N";
-              q("#earned-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT) + " N";
+              q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
+              q("#earned-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
             }
           }
           callback();
@@ -819,7 +915,7 @@ async function getAvatarMintCount() {
   contract.getAvatarMintCount({})
     .then(result => {
       q("#design-and-mint").innerHTML = "Design and mint character #" + (result + 1);
-      if ((result + 1) >= GAME_REWARDS_STATE_IN_NEAR.maxAvatars) {
+      if (result >= GAME_REWARDS_STATE_IN_NEAR.maxAvatars) {
         MAX_AVATARS_REACHED = true;
         q("#new-avatar-description").classList.add("hide");
         q("#current-color-selection").classList.add("hide");
@@ -852,7 +948,6 @@ function bootUpGame() {
 };
 
 function Game() {
-  let size = 5;
   let current_words = [];
   let this_word = "";
   let this_word_index = 0;
@@ -863,7 +958,6 @@ function Game() {
   let game_running = true;
   let timer_paused = false;
   let total_elapsed_seconds = 0;
-  let WORDS_TO_USE;
   let timerVar = undefined;
   let LEVEL = 1;
   let CURRENT_WPM = 0;
@@ -880,7 +974,7 @@ function Game() {
   let LASER_COUNT = 0;
   let STATIC_Y_AVATAR_HEIGHT = 0;
   let Y_MAX_HEIGHT = 460;
-  let THIS_LEVEL_WORD_INDEXES = [];
+  let THIS_LEVEL_WORDS = [];
   let moving_between_levels = true;
   let MUST_CLEAR_LASER_WATCHER = false;
 
@@ -908,7 +1002,7 @@ function Game() {
     this_word_index = 0;
     q("#words").innerHTML = "";
 
-    that.init(WORDS, LEVEL, function () {
+    that.init(LEVEL, function () {
       that.timer();
       game_running = true;
       q("#game-start-lost-overlay").classList.add("hide");
@@ -916,7 +1010,6 @@ function Game() {
       q("#words").classList.remove("hide");
       game.start();
       game.startThisWordWatcher();
-      IS_FETCHING_WORDS = false;
     });
   };
 
@@ -924,55 +1017,53 @@ function Game() {
     return LEVEL;
   }
 
-  this.init = function (words, startingLevel, callback) {
+  this.init = function (startingLevel, callback) {
     MUST_CLEAR_LASER_WATCHER = false;
-    WORDS_TO_USE = words;
     LEVEL = startingLevel;
 
     q("#notification").innerHTML = "Get ready..."
     that.getLevelWords(function () {
-      that.updateLevel(function () {
-        q("#game-start-lost-overlay").classList.add("hide");
-        q("#notification").classList.add("hide");
-        const width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-        // if (width < 800) { WIDTH_FOR_ITEMS = 250; }
-        if (width < 950) { WIDTH_FOR_ITEMS = width - 100; }
+
+      //that.updateLevel(function(){
+
+      q("#game-start-lost-overlay").classList.add("hide");
+      q("#notification").classList.add("hide");
+      const width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+      // if (width < 800) { WIDTH_FOR_ITEMS = 250; }
+      if (width < 950) { WIDTH_FOR_ITEMS = width - 100; }
 
 
-        if (LEVEL == 1) { size = 5; }
-        else if (LEVEL == 2) { size = 7; }
-        else if (LEVEL == 3) { size = 10; }
-        else if (LEVEL >= 4) { size = 15; }
+      q("#level").innerHTML = (LEVEL >= 12 ? "expert" : LEVEL);
 
-        q("#level").innerHTML = (LEVEL >= 12 ? "expert" : LEVEL);
+      let builder = "";
+      for (var x = 0; x < THIS_LEVEL_WORDS.length; x++) {
+        let random_word = THIS_LEVEL_WORDS[x];
+        current_words.push(random_word);
+        if (x == 0) { this_word = random_word.split(""); }
 
-        let builder = "";
-        for (var x = 0; x < THIS_LEVEL_WORD_INDEXES.length; x++) {
-          let random_word = WORDS.english[THIS_LEVEL_WORD_INDEXES[x]];
-          current_words.push(random_word);
-          if (x == 0) { this_word = random_word.split(""); }
-
-          let current_word_chars = random_word.split("");
-          let char_builder = "";
-          for (var c = 0; c < current_word_chars.length; c++) {
-            char_builder += '<span class="char">' + current_word_chars[c] + '</span>';
-          }
-          builder += '<div class="word ' + (x == 0 ? "current-word " : "not-current-word") + '" style="right:' + (Math.random() * WIDTH_FOR_ITEMS) + 'px;">' + char_builder + '</div>';
+        let current_word_chars = random_word.split("");
+        let char_builder = "";
+        for (var c = 0; c < current_word_chars.length; c++) {
+          char_builder += '<span class="char">' + current_word_chars[c] + '</span>';
         }
+        builder += '<div class="word ' + (x == 0 ? "current-word " : "not-current-word") + '" style="right:' + (Math.random() * WIDTH_FOR_ITEMS) + 'px;">' + char_builder + '</div>';
+      }
 
-        q("#words").innerHTML = builder;
-        that.setAnimationByLevel();
+      q("#words").innerHTML = builder;
+      that.setAnimationByLevel();
 
-        if (!TIMER_ONCE) {
-          STATIC_Y_AVATAR_HEIGHT = that.currentAvatarPosition()[1];
-          that.moveItem(q("#current-avatar-canvas"), that.currentAvatarPosition());
-          TIMER_ONCE = true;
-          that.timer();
-        }
+      if (!TIMER_ONCE) {
+        STATIC_Y_AVATAR_HEIGHT = that.currentAvatarPosition()[1];
+        that.moveItem(q("#current-avatar-canvas"), that.currentAvatarPosition());
+        TIMER_ONCE = true;
+        that.timer();
+      }
 
-        moving_between_levels = false;
-        callback();
-      });
+      moving_between_levels = false;
+      callback();
+
+      //});
+
     });
   };
   this.pauseTimer = function () {
@@ -1213,65 +1304,150 @@ function Game() {
     q("#notification").innerHTML = 'Game over...';
     q("#words").classList.add("hide");
     q("#words").childNodes[this_word_index].classList.add("hide");
-    q("#notification").innerHTML = "Click to start a new game";
+    q("#notification").innerHTML = "Updating to blockchain. Click to refresh!";
     IN_CURRENT_GAME = false;
+    that.submitLastLevelPlayed(function (result) {
+
+    });
   };
 
   this.submitLastLevelPlayed = async function (callback) {
-    contract.submitLastLevelPlayed({
-      level: parseInt(LEVEL),
-      wpm: parseInt(CURRENT_WPM),
-      accuracy: parseInt(CURRENT_ACCURACY),
-      correctCount: CURRENT_LEVEL_CORRECT_COUNT,
-      _avatarIndex: parseInt(CURRENT_AVATAR_TO_SUBMIT_INDEX)
-    }, GAS_TO_ATTACH)
-      .then(result => {
-        CURRENT_LEVEL_CORRECT_COUNT = 0;
-        getPlayers(function () { });
-        callback(result);
+    if (CURRENT_AVATAR_IS_BANNED) {
+      ERROR_MESSAGE("This character is banned.");
+    } else {
+      let signedMsg = await near.connection.signer.signMessage(wallet._authData.accountId, wallet._authData.accountId, NETWORK_ID_LOCAL)
+      const signature = Buffer.from(signedMsg.signature).toString('hex')
+      const pubKey = Buffer.from(signedMsg.publicKey.data).toString('hex')
+
+      let to_submit = {
+        "accountId": wallet._authData.accountId,
+        "pubkey": pubKey,
+        "signature": signature,
+        "avatarId": CURRENT_AVATAR_ID,
+        "level": LEVEL
+      };
+
+      fetch(BACKEND_URL + "/game_lost_update", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(to_submit)
+      }).then((res) => {
+        return res.json();
+      }).then((data) => {
+        if (data.status == false && data.error == true) {
+          ERROR_MESSAGE(data.message);
+        } else {
+          initSyncingLocally();
+          callback();
+        }
       }).catch(error => {
         ERROR_MESSAGE(error);
-      });
+      });;
+    }
   };
 
   this.getLevelWords = async function (callback) {
-    contract.getLevelWords({ level: parseInt(LEVEL) })
-      .then(result => {
-        THIS_LEVEL_WORD_INDEXES = result;
-        callback()
+    if (CURRENT_AVATAR_IS_BANNED) {
+      ERROR_MESSAGE("This character is banned.");
+    } else {
+      let signedMsg = await near.connection.signer.signMessage(wallet._authData.accountId, wallet._authData.accountId, NETWORK_ID_LOCAL)
+      const signature = Buffer.from(signedMsg.signature).toString('hex')
+      const pubKey = Buffer.from(signedMsg.publicKey.data).toString('hex')
+
+      let to_submit = {
+        "accountId": wallet._authData.accountId,
+        "pubkey": pubKey,
+        "signature": signature,
+        "language": CURRENT_LANGUAGE,
+        "avatarId": CURRENT_AVATAR_ID,
+      };
+
+      fetch(BACKEND_URL + "/get_level_words", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(to_submit)
+      }).then((res) => {
+        return res.json();
+      }).then(function (data) {
+        THIS_LEVEL_WORDS = data.words;
+        callback();
       }).catch(error => {
         ERROR_MESSAGE(error);
-      });
-  };
-  this.updateLevel = async function (callback) {
-    contract.updateLevel({ level: LEVEL })
-      .then(result => {
-        callback()
-      }).catch(error => {
-        ERROR_MESSAGE(error);
-      });
+      });;
+    }
   };
 
-  this.getWordsList = async function (callback) {
-    GOT_WORDS_LIST_ONCE = true;
-    contract.getWordsList({})
-      .then(result => {
-        fetch('https://ipfs.io/ipfs/' + result)
-          .then(function (response) {
-            return response.json();
-          }).then(function (data) {
-            WORDS = data;
-            callback();
-          });
-      });
+  this.updateLevel = async function (callback) {
+    if (CURRENT_AVATAR_IS_BANNED) {
+      ERROR_MESSAGE("This character is banned.");
+    } else {
+      let signedMsg = await near.connection.signer.signMessage(wallet._authData.accountId, wallet._authData.accountId, NETWORK_ID_LOCAL)
+      const signature = Buffer.from(signedMsg.signature).toString('hex')
+      const pubKey = Buffer.from(signedMsg.publicKey.data).toString('hex')
+
+      let to_submit = {
+        "accountId": wallet._authData.accountId,
+        "pubkey": pubKey,
+        "signature": signature,
+        "avatarId": CURRENT_AVATAR_ID,
+        "level": LEVEL,
+        "previous_wpm": CURRENT_WPM,
+        "previous_accuracy": CURRENT_ACCURACY
+      };
+
+      fetch(BACKEND_URL + "/update_level", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(to_submit)
+      }).then((res) => {
+        return res.json();
+      }).then((data) => {
+        if (data.status == false && data.error == true) {
+          ERROR_MESSAGE(data.message);
+        } else {
+          callback();
+        }
+      }).catch(error => {
+        ERROR_MESSAGE(error);
+      });;
+    }
+
+    /*fetch(BACKEND_URL + "/update_level").then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      console.log(data);
+      callback();
+    }).catch(error => {
+      ERROR_MESSAGE(error);
+    });;*/
+
   };
+
+  /* this.getWordsList = async function (callback) {
+     GOT_WORDS_LIST_ONCE = true;
+     fetch(BACKEND_URL + "/get_words_list?language=english").then(function (response) {
+       return response.json();
+     }).then(function (data) {
+       WORDS = data.words;
+       callback();
+     }).catch(error => {
+       ERROR_MESSAGE(error);
+     });;
+
+   };*/
 
   this.initContract = async function () {
     //QmWWqSuE8mH9jXgvPuKPQXJCsNqbj7Dtn2p3Lw8TeqCG1i
-    contract.initContract({ wordsList: "QmaApxDfuizXYoNkiPb6zKyzr8NUNLkphFAVCUJDbzat8K", mintCount: 0 }, GAS_TO_ATTACH)
+    contract.initContract({ mintCount: 0 }, GAS_TO_ATTACH)
       .then(result => {
 
-        contract.modifyRewardStates({ _minimum_balance: utils.format.parseNearAmount("25"), _pay_rate: utils.format.parseNearAmount("0.0002"), _minimum_withdrawal_amount: utils.format.parseNearAmount("0.02"), _withdrawal_fee: utils.format.parseNearAmount("0.01") }, GAS_TO_ATTACH)
+        contract.modifyRewardStates({ _minimum_balance: utils.format.parseNearAmount("25"), _pay_rate: utils.format.parseNearAmount("0.0001"), _minimum_withdrawal_amount: utils.format.parseNearAmount("0.02"), _withdrawal_fee: utils.format.parseNearAmount("0.01") }, GAS_TO_ATTACH)
           .then(result => {
 
           });
@@ -1292,6 +1468,7 @@ function Game() {
 
 
   this.resetAndProceedToNewSession = function () {
+
     that.pauseTimer();
     moving_between_levels = true;
     current_words = [];
@@ -1303,19 +1480,27 @@ function Game() {
       check_for_matching_lasers[z].remove();
     }
     LASER_COUNT = 0;
+
     if (!GAME_LOST) {
-      q("#game-start-lost-overlay").classList.remove("hide");
-      q("#notification").classList.remove("hide");
-      q("#notification").innerHTML = "Saving to blockchain, loading level " + (game.getLevel() + 1) + "...";
-      that.submitLastLevelPlayed(function (result) {
+      //q("#game-start-lost-overlay").classList.remove("hide");
+      //q("#notification").classList.remove("hide");
+      //q("#notification").innerHTML = "Saving to blockchain, loading level " + (game.getLevel() + 1) + "...";
+      //that.submitLastLevelPlayed(function (result) {
+      that.updateLevel(function (result) {
+        if (parseFloat(GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards) > 0) {
+          //CURRENT_ELIGIBLE_AMOUNT += parseFloat(CURRENT_PAY_RATE);
+          q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
+          q("#earned-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
+        }
         LEVEL++;
         updateThisPlayerResults(result);
-        getAvatars(function () { });
+        getAvatars(false, function () { });
         getGameRewardsState();
-        that.init(WORDS, LEVEL, function () {
+        that.init(LEVEL, function () {
           timer_paused = false;
           that.timer();
         });
+
       });
     }
     game_running = true;
@@ -1324,7 +1509,6 @@ function Game() {
 
   this.getDetails = function () {
     return {
-      "size": size,
       "current_words": current_words,
       "this_word": this_word,
       "this_word_index": this_word_index,
@@ -1335,8 +1519,17 @@ function Game() {
   };
 
   this.start = function () {
+
     document.onkeypress = function (e) {
       e = e || window.event;
+      var caps = e.getModifierState && e.getModifierState('CapsLock');
+      //console.log("CAPS" + caps);
+      if (caps) {
+        q("#caps-lock-notice").classList.remove("hide");
+      } else {
+        q("#caps-lock-notice").classList.add("hide");
+      }
+
       if (!moving_between_levels) {
 
         if (game_running && !GAME_LOST) {
@@ -1358,8 +1551,8 @@ function Game() {
 
             if (parseFloat(GAME_REWARDS_STATE_IN_NEAR.currentEligibleRewards) > 0) {
               CURRENT_ELIGIBLE_AMOUNT += parseFloat(CURRENT_PAY_RATE);
-              q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
-              q("#earned-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
+              //q("#pending-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS)+ " N";
+              //q("#earned-rewards-total").innerHTML = "+" + (CURRENT_ELIGIBLE_AMOUNT).toFixed(NEAR_DECIMALS) + " N";
             }
             current_completed_string = [];
           } else {
@@ -1389,7 +1582,6 @@ function Game() {
   };
 
 }
-let IS_FETCHING_WORDS = false;
 const currentAvatarPallet = {};
 const currentUpdatePallet = {};
 
@@ -1565,11 +1757,11 @@ let DISPLAY_AVATAR = [
 function startGame() {
   game = undefined;
   game = new Game();
-  game.getWordsList(function () {
-    q("#game-container").classList.remove("hide");
-    q("#notification").innerHTML = "Click to start";
-    watchLauncher();
-  });
+  //game.getWordsList(function () {
+  q("#game-container").classList.remove("hide");
+  q("#notification").innerHTML = "Click to start";
+  watchLauncher();
+  //});
 }
 
 function watchLauncher() {
@@ -1579,23 +1771,21 @@ function watchLauncher() {
     }
   });
   q("#game-start-lost-overlay").addEventListener('click', function () {
-    if (!IS_FETCHING_WORDS && !IN_CURRENT_GAME) {
-      IS_FETCHING_WORDS = true;
+    if (!IN_CURRENT_GAME) {
       IN_CURRENT_GAME = true;
-      //q("#notification").innerHTML = "Loading level 1 from smart contract...";
       if (game.isGameOver()) {
-        game.resetGameOver();
+        window.location.reload();
+        //game.resetGameOver();
       } else {
         getPlayers(function () {
           getGameRewardsState();
-          game.init(WORDS, START_LEVEL, function () {
+          game.init(START_LEVEL, function () {
             q("#game-start-lost-overlay").classList.add("hide");
             q("#notification").classList.add("hide");
             q("#words").classList.remove("hide");
             game.start();
             game.startThisWordWatcher();
             game.startThisLaserWatcher();
-            IS_FETCHING_WORDS = false;
           });
         });
       }
@@ -1630,7 +1820,7 @@ function displayCurrentGameAvatar() {
   }
 };
 
-function generateCurrentAvatar() {
+function generateCurrentAvatar(callback) {
   q("#all-account-avatars").innerHTML = "";
   let was_found = false;
   for (var j = 0; j < DECOMPRESSED_AVATARS.length; j++) {
@@ -1639,8 +1829,9 @@ function generateCurrentAvatar() {
       was_found = true;
       let is_selected_index = (CURRENT_AVATAR_ID == DECOMPRESSED_AVATARS[j].id);
       let is_block_list = DECOMPRESSED_AVATARS[j].isBlockList;
-
-      q("#all-account-avatars").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[j], is_selected_index, is_block_list);
+      let is_banned = DECOMPRESSED_AVATARS[j].isBanned;
+      CURRENT_AVATAR_IS_BANNED = is_banned;
+      q("#all-account-avatars").innerHTML += buildAvatarCanvas(DECOMPRESSED_AVATARS[j], is_selected_index, is_block_list, is_banned);
     }
   }
 
@@ -1648,10 +1839,7 @@ function generateCurrentAvatar() {
   if (was_found) {
     q("#update-avatar-description").classList.remove("hide");
   }
-  setTimeout(function () {
-    q(".account-avatar-canvas.selected-avatar .descriptions").click();
-  }, 100);
-
+  callback();
 };
 
 function getOrderForAvatarId(thisId) {
@@ -1671,7 +1859,7 @@ function getOrderForAvatarId(thisId) {
   }
 };
 
-function watchAvatarSelection() {
+function watchAvatarSelection(callback) {
   let all_avatars = document.querySelectorAll("#all-account-avatars .account-avatar-canvas");
   for (var k = 0; k < all_avatars.length; k++) {
 
@@ -1703,7 +1891,7 @@ function watchAvatarSelection() {
         CURRENT_AVATAR_ID = e.target.parentElement.dataset.avatarid;
 
         CURRENT_AVATAR_TO_SUBMIT_INDEX = convertDecompressedIndexToUsersArrayIndex();
-
+        CURRENT_AVATAR_IS_BANNED = convertDecompressedIndexToUsersArrayIndexGetBanned();
         q("#current-avatar-canvas").innerHTML = "";
 
       }
@@ -1711,6 +1899,7 @@ function watchAvatarSelection() {
     });
 
   }
+  callback();
 };
 
 function buildMarketCanvas(marketItem, avatarItem) {
@@ -1757,7 +1946,7 @@ function buildMarketCanvas(marketItem, avatarItem) {
   return builder;
 };
 
-function buildAvatarCanvas(avatarItem, is_selected, is_block_list) {
+function buildAvatarCanvas(avatarItem, is_selected, is_block_list, is_banned) {
   let splitAvatarData = avatarItem.data.split(",");
   for (var s = 0; s < splitAvatarData.length; s++) {
     if (splitAvatarData[s] == "") { }
@@ -1780,6 +1969,8 @@ function buildAvatarCanvas(avatarItem, is_selected, is_block_list) {
   }
   if (is_block_list) {
     builder += '</div><div class="avatar-box red">Needs Updating</div>';
+  } else if (is_banned) {
+    builder += '</div><div class="avatar-box red">Banned, please contact us</div>';
   } else {
     builder += '</div><div class="avatar-box"><span class="rank-levels">' + avatarItem.highestLevel + '.</span><span class="rank-words">' + avatarItem.correctWordTotal + '</span><span class="mint-ids">' + avatarItem.id + '</span>.<div class="truncate">' + avatarItem.address.split(NEAR_NETWORK_NAME)[0] + '</div></div>';
   }
@@ -2169,7 +2360,9 @@ function updateDescriptionWatcher() {
               q("#update-description").innerHTML = "Update description for " + utils.format.formatNearAmount(ACTION_FEE) + " N";
               IS_UPDATING_DESCRIPTION = false;
               buildMural();
-              generateCurrentAvatar();
+              generateCurrentAvatar(function () {
+                q("#all-account-avatars .selected-avatar .descriptions").click();
+              });
               //watchAvatarSelection();
             }, 100);
           }).catch(error => {

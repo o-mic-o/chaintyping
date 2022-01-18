@@ -15,6 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Quicksand&display=swap" rel="stylesheet">
 </head>
+
 <body>
   <div id="error-notification" class="error-visible">
     <div class="flex justify-content-start">
@@ -25,8 +26,8 @@
       </div>
     </div>
     <div id="display-error-texts">
-      <h3 >Welcome to chain typing</h3>
-      <h4 style="padding-top:15px;font-style: italic;">Play to earn typing game on NEAR</h4>
+      <h3>Welcome to chain typing on Near Testnet</h3>
+      <h4 style="padding-top:15px;font-style: italic;">Play to earn typing game</h4>
       <h3 style="padding-top:15px;" class="green blinking">Click to Enter</h3>
     </div>
   </div>
@@ -41,51 +42,53 @@
     <div id="mobile-menu" class="hide stats-label pointer br margin-bottom">Menu</div>
     <div class="main-top-section group">
       <div id="sign-in-button" class="green pointer stats-label stats-label-right br">Login with NEAR</div>
-      <div id="game-launcher-resume" class="hide stats-label stats-label-right pointer green br">Resume</div>
-      <div id="game-launcher" class="hide stats-label stats-label-right pointer green br">Restart</div>
+      <div id="game-launcher" class="hide stats-label stats-label-right pointer green br">Play</div>
       <div id="eligible-rewards" class="hide pointer stats-label stats-label-right purple br"></div>
       <div class="stats-label stats-label-right green pointer hide br" id="pending-rewards-total">+ 0 N</div>
       <div id="mural-button" class="stats-label stats-label-right pointer br" onclick='muralCall()'>Leaderboard</div>
       <div id="market-button" class="stats-label stats-label-right pointer br" onclick='getMarketCall()'>Market</div>
       <div id="get-avatar" class="hide pointer stats-label stats-label-right br" onclick="getAvatarCall()">Mint</div>
       <div class="stats-label stats-label-right hide pointer br" id="account-id"></div>
-      <div id="game-stats-button" class="pointer stats-label stats-label-right br" onclick="getGameStats()">Settings</div>
+      <div id="game-stats-button" class="pointer stats-label stats-label-right br" onclick="getGameStats()">Settings
+      </div>
       <div id="faq-button" class="pointer stats-label stats-label-right br" onclick="getFaqCall()">FAQ</div>
       <div class="stats-label stats-label-right red pointer hide br" id="sign-out-button-two">Exit</div>
     </div>
     <div id="faq" class="hide" style="margin-bottom:100px;">
-      <div>
-        <div class="faq-section">
-          <h3>Welcome to Chain Typing</h3>
-
-          <p>This is a blockchain typing game, to help improve efficiency at typing.</p>
-
-          <p>In order to play the game, it's needed to own a <b>Chain Character</b>. Each Chain Character is
-            represented on a <b>Leaderboard</b>.
-            There will only be 50 characters available initially to play the game. These are listed by default in order of most words typed. The number of characters will increase as the game is able to scale.
-            <b>They may be used as a sort of advertising space, to hold a description.</b> Donations will go to the game's funds to help further the game.<br>
-          </p>
-          <p>This game is an experiment, provides no guarentees, no liability, and no warranty at all.
-            Chain Character minting are donations to the game's funds. They are non-refundable, and provide no guarentees of service.</p>
-            <p>
-            <h3 style="padding-top:15px;padding-bottom:15px;">Credits</h3>
-            <ul>
-              <li>Concept and coding by Michael</li>
-              <li>Smart contract advising by Danielo</li>
-              <li>With help from <a href="https://humanguild.io" class="purple" target="_blank">humanguild.io</a></li>
-              <li>Music by <a target="_blank" class="purple" href="https://patrickdearteaga.com ">patrickdearteaga.com</a>
-              </li>
-            </ul>
-            </p>
-
-              <h3 style="width:fit-content;padding:15px 0 15px 0;">
-                <a href="https://finear.xyz/#/simplegames.near" class="purple" rel="noopener" target="_blank">Simple Games Fund</a>
-              </h3>
-
-                <h3 style="width:fit-content;padding:15px 0 15px 0;"><a href="https://discord.gg/6TMX8jNpP2" class="green" target="_blank">Join our
-                    Discord!</a></h3>
+      <div class="faq-section">
+        <div>
+          <h3>Welcome to Chain Typing on Near</h3>
+          <p>This is a play to earn typing game, to help improve efficiency at typing.</p>
+          <p></p>
         </div>
 
+        <div>
+          <p>
+            In order to play the game, it's needed to own a character. They are represented on a Leaderboard.<br><br>
+            There will only be 30 characters available initially to play the game. The number of characters will
+            increase as the game is able to scale. They may be used as a sort of
+            advertising space, to hold a description. <br><br>Donations will go to the game's funds to help further the
+            game.</p>
+
+          <p>This game is an experiment, provides no guarentees, no liability, and no warranty at all. Chain Character
+            minting are
+            donations to the game's funds. They are non-refundable, and provide no guarentees of service.</p>
+        </div>
+
+        <p>
+        <h3 style="padding-top:15px;padding-bottom:15px;">Credits</h3>
+        <ul>
+          <li>Concept and coding by Michael</li>
+          <li>Smart contract advising by Danielo</li>
+          <li>With help from <a href="https://humanguild.io" class="purple" target="_blank">humanguild.io</a></li>
+          <li>Music by <a target="_blank" class="purple" href="https://patrickdearteaga.com ">patrickdearteaga.com</a>
+          </li>
+        </ul>
+        </p>
+
+        <h3 style="width:fit-content;padding:15px 0 15px 0;"><a href="https://discord.gg/6TMX8jNpP2" class="green"
+            target="_blank">Join our
+            Discord!</a></h3>
       </div>
     </div>
   </div>
@@ -114,10 +117,12 @@
       </div>
 
       <div id="update-market-list" style="margin-bottom:15px;">
-        <input id="update-market-price-input" type="number" class="hide stats-label br" style="width:150px;margin:0 5px 0 0px;" placeholder="NEAR price to ask...">
+        <input id="update-market-price-input" type="number" class="hide stats-label br"
+          style="width:150px;margin:0 5px 0 0px;" placeholder="NEAR price to ask...">
         <div class="group" style="justify-content: flex-start;">
           <div class="stats-label pointer green hide br" id="update-market-price"></div>
-          <div class="stats-label pointer red hide br" id="remove-this-listing-button" style="margin-left:15px;margin-top:15px;">Remove listing</div>
+          <div class="stats-label pointer red hide br" id="remove-this-listing-button"
+            style="margin-left:15px;margin-top:15px;">Remove listing</div>
         </div>
       </div>
 
@@ -144,9 +149,11 @@
         <div id="avatar-canvas-update"></div>
 
         <div style="margin-top:5px;" class="group" style="flex-direction: column;">
-          <div id="update-character-button" class="br pointer stats-label stats-label-left green">Update character for 0.02 N</div>
+          <div id="update-character-button" class="br pointer stats-label stats-label-left green">Update character for
+            0.02 N</div>
         </div>
-        <div style="padding:15px 0 15px 0;font-size:0.8rem;color:gray;"><b>Note:</b> Sexual, racist or violent drawings are not allowed, and will be deleted. There are no refunds for donations.</div>
+        <div style="padding:15px 0 15px 0;font-size:0.8rem;color:gray;"><b>Note:</b> Sexual, racist or violent drawings
+          are not allowed, and will be deleted. There are no refunds for donations.</div>
       </div>
 
     </div>
@@ -154,19 +161,21 @@
 
   </div>
 
-  <div id="mural-box" class="hide faq-section" style="position:relative;margin-bottom:100px;padding:15px;padding-bottom:50px;">
+  <div id="mural-box" class="hide faq-section"
+    style="position:relative;margin-bottom:100px;padding:15px;padding-bottom:50px;">
     <div id="sorting" class="group" style="justify-content: flex-start;">
       <div class="stats-label pointer" id="words-sort">Words Rank</div>
       <div class="stats-label pointer" id="rank-sort">Levels Rank</div>
       <div class="stats-label pointer" id="mint-ids-sort">Mint Rank</div>
     </div>
     <div id="contract-linking" class="group" style="justify-content: flex-start;">
-    <div class="stats-label" id="legend">LEGEND: Level.Words.Account</div>
+      <div class="stats-label" id="legend">LEGEND: Level.Words.Account</div>
     </div>
     <div id="mural"></div>
   </div>
 
-  <div id="market-box" class="hide faq-section" style="position:relative;margin-bottom:100px;padding:15px;padding-bottom:50px;">
+  <div id="market-box" class="hide faq-section"
+    style="position:relative;margin-bottom:100px;padding:15px;padding-bottom:50px;">
     <div id="sorting" class="group" style="justify-content: flex-start;">
       <div class="stats-label pointer" id="words-sort-market">Words Rank</div>
       <div class="stats-label pointer" id="rank-sort-market">Levels Rank</div>
@@ -183,20 +192,19 @@
     <div class="game-top">
       <div class="signed-in-flow group hide">
         <div class="group">
-          <div id="back-to-inner-menu" onclick="displayInnerMenu(true)"
-            class="pointer stats-label stats-label-right green br">Back</div>
-
-          <div id="earned-rewards-withdrawal" class="stats-label stats-label-right green br"><span id="earned-rewards-total"></span></div>
+          <div id="caps-lock-notice" class="stats-label stats-label-right hide br red">Caps Lock ON</div>
+          <div id="earned-rewards-withdrawal" class="stats-label stats-label-right green br"><span
+              id="earned-rewards-total"></span></div>
           <div class="stats-label stats-label-right hide br"><span id="level"></span></div>
           <div class="stats-label stats-label-right hide br mobile-stats-item"><span id="wpm"></span></div>
           <div class="stats-label stats-label-right hide br mobile-stats-item"><span id="accuracy"></span></div>
-          <div class="stats-label stats-label-right br mobile-stats-item"><span id="minutes">00</span>:<span id="seconds">00</span></div>
+          <div class="stats-label stats-label-right br mobile-stats-item"><span id="minutes">00</span>:<span
+              id="seconds">00</span></div>
           <div id="player-container">
-            <div id="play-pause" class="pointer stats-label stats-label-right purple br" style="padding:12px;">&#9836;</div>
+            <div id="play-pause" class="pointer stats-label stats-label-right purple br" style="padding:12px;">&#9836;
+            </div>
           </div>
-          <div id="night-two" class="hide pointer stats-label stats-label-right br" style="padding:12px;">&#x2600;</div>
           <div class="stats-label stats-label-right red pointer br" id="sign-out-button">Exit</div>
-
         </div>
       </div>
     </div>
@@ -222,17 +230,16 @@
   </div>
 
   <div class="ticker-wrap" style="z-index:5;">
-      <div id="ticker-inner" class="ticker"></div>
+    <div id="ticker-inner" class="ticker"></div>
   </div>
 
   <div id="game-stats" class="hide faq-section" style="position:relative;margin-bottom:100px;">
-        <div style="display:flex;justify-content: flex-start;margin-bottom:15px;">
-
-          <div id="player-container">
-            <div id="play-pause-one" class="pointer stats-label stats-label-right br selected" style="padding:12px;">Play / Pause Music</div>
-          </div>
-          <div id="night" class="hide pointer stats-label stats-label-right br selected" style="padding:12px;">Change Day / Night Style</div>
-          </div>
+    <div style="display:flex;justify-content: flex-start;margin-bottom:15px;">
+      <div id="player-container">
+        <div id="play-pause-one" class="pointer stats-label stats-label-right br selected" style="padding:12px;">Play /
+          Pause Music</div>
+      </div>
+    </div>
     <table id="game-stats-table">
       <tr class="green">
         <td>Current Eligible Rewards</td>
@@ -246,13 +253,13 @@
         <td>Pay rate per word</td>
         <td id="stats-pay-rate"></td>
       </tr>
-      <tr class="hide green">
+      <tr class="green">
         <td>Total Paid out</td>
         <td id="stats-total-paid-out"></td>
       </tr>
       <tr class="green">
-        <td>Total earned by players</td>
-        <td id="stats-total-earned-players"></td>
+        <td>Total in game balances</td>
+        <td id="stats-in-game-earned"></td>
       </tr>
       <tr class="green">
         <td>Counter</td>
@@ -325,10 +332,14 @@
   <script>
     function q(input) { return document.querySelector(input); };
     let ACCESS_KEY_DEPLETED = false;
+    let INTERNAL_GAME_ERROR = false;
+
     q("#error-notification").addEventListener("click", function (event) {
-      if (!ACCESS_KEY_DEPLETED) {
+      if (!ACCESS_KEY_DEPLETED && !INTERNAL_GAME_ERROR) {
         q("#error-notification").classList.add("hide");
         q("#error-notification").classList.remove("error-visible");
+      } else if (INTERNAL_GAME_ERROR) {
+        window.location.reload();
       } else {
         wallet.signOut()
         window.location.replace(window.location.origin + window.location.pathname)
@@ -362,129 +373,71 @@
     }
 
     q("#audio-player").volume = 0.1;
-    function muralCall() {
-      window.location.hash = "/";
-      q("#mural-button").classList.add("selected");
-      q("#game-stats-button").classList.remove("selected");
-      q("#market-button").classList.remove("selected");
-      q("#faq-button").classList.remove("selected");
-      q("#get-avatar").classList.remove("selected");
-      q("#account-id").classList.remove("selected");
-      q("#faq").classList.add("hide"); q("#mural-box").classList.remove("hide");;
-      q("#market-box").classList.add("hide");
-      q("#my-account-data").classList.add("hide");
-      q("#choose-avatar").classList.add("hide");
-      q("#game-stats").classList.add("hide");
-    }
-    function getGameStats() {
-      window.location.hash = "/stats";
-      q("#mural-button").classList.remove("selected");
-      q("#game-stats-button").classList.add("selected");
-      q("#market-button").classList.remove("selected");
-      q("#faq-button").classList.remove("selected");
-      q("#get-avatar").classList.remove("selected");
-      q("#account-id").classList.remove("selected");
-      q("#choose-avatar").classList.add("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
-      q("#market-box").classList.add("hide");
-      q("#game-stats").classList.remove("hide");
-      q("#faq").classList.add("hide");
-    }
-    function getAvatarCall() {
-      window.location.hash = "/mint";
-      q("#get-avatar").classList.add("selected");
-      q("#faq-button").classList.remove("selected");
-      q("#mural-button").classList.remove("selected");
-      q("#game-stats-button").classList.remove("selected");
-      q("#market-button").classList.remove("selected");
-      q("#account-id").classList.remove("selected");
-      q("#choose-avatar").classList.remove("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
-      q("#market-box").classList.add("hide");
-      q("#game-stats").classList.add("hide");
-    }
-    function getFaqCall() {
-      window.location.hash = "/faq";
-      q("#faq-button").classList.add("selected");
-      q("#get-avatar").classList.remove("selected");
-      q("#mural-button").classList.remove("selected");
-      q("#game-stats-button").classList.remove("selected");
-      q("#market-button").classList.remove("selected");
-      q("#account-id").classList.remove("selected");
-      q("#faq").classList.remove("hide"); q("#mural-box").classList.add("hide");
-      q("#market-box").classList.add("hide");
-      q("#game-stats").classList.add("hide");
-    }
-    function getMarketCall() {
-      window.location.hash = "/market";
-      q("#market-button").classList.add("selected");
-      q("#get-avatar").classList.remove("selected");
-      q("#faq-button").classList.remove("selected");
-      q("#game-stats-button").classList.remove("selected");
-      q("#mural-button").classList.remove("selected");
-      q("#account-id").classList.remove("selected");
-      q("#faq").classList.add("hide");
-      q("#choose-avatar").classList.add("hide"); q("#mural-box").classList.add("hide"); q("#my-account-data").classList.add("hide");
-      q("#market-box").classList.remove("hide");
-      q("#game-stats").classList.add("hide");
-    }
 
-    let muralBtn = q("#mural-button");
+    function showAndHideContainer(container_id_to_show, button_id_to_show) {
 
-    muralBtn.addEventListener('click', function () {
-      q("#choose-avatar").classList.add("hide");
-      q("#mural-box").classList.remove("hide");
-      q("#my-account-data").classList.add("hide");
-      q("#faq").classList.add("hide");
-      q("#game-stats").classList.add("hide");
-      window.location.hash = "/leaderboard";
-    })
-    let accountBtn = q("#account-id");
+      let container_items = [
+        "faq",
+        "market-box",
+        "my-account-data",
+        "choose-avatar",
+        "game-stats",
+        "mural-box",
+      ];
 
-    accountBtn.addEventListener('click', function () {
-      window.location.hash = "/account";
-      q("#account-id").classList.add("selected");
-      q("#market-button").classList.remove("selected");
-      q("#get-avatar").classList.remove("selected");
-      q("#faq-button").classList.remove("selected");
-      q("#game-stats-button").classList.remove("selected");
-      q("#mural-button").classList.remove("selected");
+      let button_items = [
+        "mural-button",
+        "game-stats-button",
+        "faq-button",
+        "get-avatar",
+        "account-id",
+        "market-button"
+      ];
 
-      q("#choose-avatar").classList.add("hide");
-      q("#mural-box").classList.add("hide");
-      q("#my-account-data").classList.remove("hide");
-      q("#market-box").classList.add("hide");
-      q("#game-stats").classList.add("hide");
-    })
-
-    let night = q("#night");
-    let body = q("body");
-    let nightTwo = q("#night-two");
-
-    function setBackground() {
-      if (body.classList.contains("night")) {
-        body.classList.remove("night");
-        setCookie('chaintyping_style', 'false', 7);
-      } else {
-        body.classList.add("night");
-        setCookie('chaintyping_style', 'true', 7);
-      }
-    };
-    function checkStyle() {
-      let styling = getCookie("chaintyping_style");
-      if (styling != null) {
-        if (styling == "true"){
-          body.classList.add("night");
+      for (let i = 0; i < container_items.length; i++) {
+        if (container_items[i] == container_id_to_show) {
+          q("#" + container_id_to_show).classList.remove("hide");
         } else {
-          body.classList.remove("night");
+          q("#" + container_items[i]).classList.add("hide");
+        }
+      }
+
+      for (let j = 0; j < button_items.length; j++) {
+        if (button_items[j] == button_id_to_show) {
+          q("#" + button_id_to_show).classList.add("selected");
+        } else {
+          q("#" + button_items[j]).classList.remove("selected");
         }
       }
     }
-    checkStyle();
-    night.addEventListener('click', function () {
-      setBackground();
+
+    function muralCall() {
+      window.location.hash = "/leaderboard";
+      showAndHideContainer("mural-box", "mural-button");
+    }
+    function getGameStats() {
+      window.location.hash = "/stats";
+      showAndHideContainer("game-stats", "game-stats-button");
+    }
+    function getAvatarCall() {
+      window.location.hash = "/mint";
+      showAndHideContainer("choose-avatar", "get-avatar");
+    }
+    function getFaqCall() {
+      window.location.hash = "/faq";
+      showAndHideContainer("faq", "faq-button");
+    }
+    function getMarketCall() {
+      window.location.hash = "/market";
+      showAndHideContainer("market-box", "market-button");
+    }
+
+    q("#account-id").addEventListener('click', function () {
+      window.location.hash = "/account";
+      showAndHideContainer("my-account-data", "account-id");
     })
-    nightTwo.addEventListener('click', function () {
-      setBackground();
-    });
+
+
     var track = document.getElementById('audio-player');
 
     var controlBtn = document.getElementById('play-pause-one');
@@ -505,65 +458,25 @@
     });
 
 
-
-
-  function updateCounter(counter) {
-    let current_v = counter.split("\n");
-    current_v = current_v[0].split(":")[1];
-    q("#counter").innerHTML = current_v;
-  };
-
-  function getDatas(callback) {
-    var requestOptions = {
-      method: 'GET',
-    };
-
-    fetch("backend/counter.php", requestOptions)
-      .then(response => response.text())
-      .then(result => {
-        let resulting_data = JSON.parse(result);
-        updateCounter(resulting_data.counter);
-        callback();
-      })
-      .catch(error => console.log('error', error));
-  };
-
-  getDatas(function () {
-
-    function updateCounter() {
-      var requestOptions = {
-        method: 'POST',
-        body: {update: "update"}
-      };
-
-      fetch("backend/counter_writer.php", requestOptions)
-        .then(response => response.text())
-        .then(result => {
-        })
-        .catch(error => console.log('error', error));
-
-    }
-
-    updateCounter();
-  });
-  let MOBILE_MENU_OPEN = false;
-  q("#mobile-menu").addEventListener("click", function(){
-    if (!MOBILE_MENU_OPEN) {
-      MOBILE_MENU_OPEN = true;
-      q("#mobile-menu").classList.add("selected");
-      q("#mobile-menu").classList.remove("margin-bottom");
-      q(".main-top-section.group").classList.add("mobile-visible");
-    } else {
-      MOBILE_MENU_OPEN = false;
-      q("#mobile-menu").classList.remove("selected");
-      q("#mobile-menu").classList.add("margin-bottom");
-      q(".main-top-section.group").classList.remove("mobile-visible");
-    }
-  });
+    let MOBILE_MENU_OPEN = false;
+    q("#mobile-menu").addEventListener("click", function () {
+      if (!MOBILE_MENU_OPEN) {
+        MOBILE_MENU_OPEN = true;
+        q("#mobile-menu").classList.add("selected");
+        q("#mobile-menu").classList.remove("margin-bottom");
+        q(".main-top-section.group").classList.add("mobile-visible");
+      } else {
+        MOBILE_MENU_OPEN = false;
+        q("#mobile-menu").classList.remove("selected");
+        q("#mobile-menu").classList.add("margin-bottom");
+        q(".main-top-section.group").classList.remove("mobile-visible");
+      }
+    });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.41.0/dist/near-api-js.min.js"></script>
+  <!--<script src="https://cdn.jsdelivr.net/npm/near-api-js@0.41.0/dist/near-api-js.min.js"></script>-->
+  <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.44.1/dist/near-api-js.min.js"></script>
   <script id="lzutf8" src="https://cdn.jsdelivr.net/npm/lzutf8/build/production/lzutf8.min.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/app.js"></script>
 
 </body>
 

@@ -1,34 +1,38 @@
 // @nearfile
+// Chain Typing Smart Contract Version 3
 
-import { context, logging, storage, RNG, u128, ContractPromiseBatch, PersistentUnorderedMap } from 'near-sdk-as';
+import { context, logging, storage, u128, ContractPromiseBatch, PersistentUnorderedMap } from 'near-sdk-as';
 import { Player, ChainAvatarsForUser, Game, OrderForUser, GameRewardsState } from './model';
 
-const OWN = "mic.near";
-const GAME_OWN = "simplegames.near";
-//const DAO = "chaintyping-test2.sputnikv2.testnet";
+const OWN = "mic.near"; // Owner of the contract
+const GAME_OWN = "simplegames.near"; // Game owner of the contract
+const GAME_SYSTEM = "chaintyping.near"; // Game system which operates the gameFinalityUpdate functionality to save on gas fees
 
-const MAX_AVATARS_ABSOLUTE_LIMIT = <u32>1000;
-const MAX_WPM = 300;
-const MAX_ACCURACY = 100;
-const MAX_DESC = 120;
+const MAX_AVATARS_ABSOLUTE_LIMIT = <u32>1000; // Hard maximum limit which may never be reached
+const MAX_WPM = 300; // Max WPM for anti-cheating
+const MAX_ACCURACY = 100; // Max accuracy for anti-cheating
+const MAX_DESC = 120; // Max description length for visual fit
 
-const avatars = new PersistentUnorderedMap<string, ChainAvatarsForUser>("a");
-const players = new PersistentUnorderedMap<string, Player>("p");
-const orders = new PersistentUnorderedMap<string, Array<OrderForUser>>("o");
-const gameRewardsState = new PersistentUnorderedMap<string, GameRewardsState>("g");
+const avatars = new PersistentUnorderedMap<string, ChainAvatarsForUser>("a"); // Avatars Map declared in model.ts
+const players = new PersistentUnorderedMap<string, Player>("p"); // Players Map declared in model.ts
+const orders = new PersistentUnorderedMap<string, Array<OrderForUser>>("o"); // Market Orders Map declared in model.ts
+const gameRewardsState = new PersistentUnorderedMap<string, GameRewardsState>("g"); // Game Rewards State Map declared in model.ts
 
-export function getPlayers(start: u32, end: u32): Array<Player> { return players.values(start, end); };
-export function getAvatars(start: u32, end: u32): Array<ChainAvatarsForUser> { return avatars.values(start, end); };
-export function getOrders(start: u32, end: u32): Array<Array<OrderForUser>> { return orders.values(start, end); };
+export function getPlayers(start: u32, end: u32): Array<Player> { return players.values(start, end); }; // Returns view function of Players
+export function getAvatars(start: u32, end: u32): Array<ChainAvatarsForUser> { return avatars.values(start, end); }; // Returns view function of Avatars
+export function getOrders(start: u32, end: u32): Array<Array<OrderForUser>> { return orders.values(start, end); }; // Returns view function of Market Orders
+export function getGameRewardsState(): Array<GameRewardsState> { return gameRewardsState.values(0, 1) }; // Returns view function of Game Rewards State
 
-export function getGameRewardsState(): Array<GameRewardsState> { return gameRewardsState.values(0, 1) };
+export function initContract(mintCount: u32): void {
+  // Used for initializing the contract, contained by the owner and game owner of the contract
 
-export function initContract(wordsList: string, mintCount: u32): void {
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
-  storage.set<Game>("game", new Game(mintCount, wordsList))
+  storage.set<Game>("game", new Game(mintCount))
 };
 
 export function initPlayerRewards(): void {
+  // Used for initializing the contract, contained by the owner and game owner of the contract
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
 
   let all_players = players.values();
@@ -38,15 +42,10 @@ export function initPlayerRewards(): void {
   }
 };
 
-export function setWordList(wordsIpfsLocation: string): void { // Must run first to initiatize contract
-  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
-  let game = storage.get<Game>("game");
-  if (game != null) {
-    game.updateWordsList(wordsIpfsLocation);
-    storage.set<Game>("game", game)
-  }
-};
+
 export function setWithdrawalFee(_fee: string): void {
+  // Allows modifying the withdrawal fee if needing to update depending on market conditions
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   if (reward_state != null) {
@@ -54,15 +53,21 @@ export function setWithdrawalFee(_fee: string): void {
     gameRewardsState.set("gameRewardsState", reward_state);
   }
 };
+
 export function setMinimumWithdrawalAmount(_amount: string): void {
+  // Allows modifying the minimum withdrawal amount, to prevent very small withdrawals, initialized in the constructor in model.ts
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   if (reward_state != null) {
     reward_state.setMinimumWithdrawalAmount(u128.from(_amount));
     gameRewardsState.set("gameRewardsState", reward_state);
   }
-}
+};
+
 export function setRoyalty(_royalty: string): void {
+  // Allows modifying the royalty for market orders, which is a fixed rate, initialized in the constructor in model.ts
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   if (reward_state != null) {
@@ -70,18 +75,21 @@ export function setRoyalty(_royalty: string): void {
     gameRewardsState.set("gameRewardsState", reward_state);
   }
 };
-export function setPayRate(_pay_rate: string): void {
-  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner");
 
+export function setPayRate(_pay_rate: string): void {
+  // Allows modifying the per word pay rate, initialized in the constructor in model.ts
+
+  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner");
   let reward_state = gameRewardsState.get("gameRewardsState");
   if (reward_state != null) {
     reward_state.setPayRate(u128.from(_pay_rate));
     gameRewardsState.set("gameRewardsState", reward_state);
   }
-
-}
+};
 
 export function modifyRewardStates(_minimum_balance: string, _pay_rate: string, _minimum_withdrawal_amount: string, _withdrawal_fee: string): void {
+  // Allows modifying the gameRewardState based on input parameters
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN));
 
   let reward_state = gameRewardsState.get("gameRewardsState");
@@ -95,6 +103,8 @@ export function modifyRewardStates(_minimum_balance: string, _pay_rate: string, 
 }
 
 export function depositForRewards(): void {
+  // Allows depositing to be used as gameplay rewards
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Only owner may replenish deposits for game.");
   let value = context.attachedDeposit;
 
@@ -107,6 +117,8 @@ export function depositForRewards(): void {
 };
 
 export function reduceEligibleRewards(value: string): void {
+  // Allows manually reducing eligible rewards of the game state
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Only owner may reduce availibility for game.");
   let reward_state = gameRewardsState.get("gameRewardsState");
   assert(reward_state != null, "Reward state was null.");
@@ -118,6 +130,8 @@ export function reduceEligibleRewards(value: string): void {
 }
 
 export function withdrawRewards(): void {
+  // Withdrawal capability which checks for satisfactory allowance and takes reduction of the game state for the player, including the withdrawal fee
+
   let thisPlayer = players.get(context.predecessor);
 
   assert(thisPlayer != null, "Player was null.");
@@ -142,6 +156,8 @@ export function withdrawRewards(): void {
 };
 
 export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32): boolean {
+  // Moderator function in event of needing to remove a character, should never need to be used
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
   let getSpecificAvatarsOfUser = avatars.get(_username);
   if (getSpecificAvatarsOfUser != null) {
@@ -153,6 +169,8 @@ export function moderatorRemoveAvatar(_username: string, _avatarIndex: u32): boo
   }
 };
 export function moderatorResetBlockList(_username: string): void {
+  // Moderator function to reset the block list completely
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
   let getSpecificAvatarsOfUser = avatars.get(_username);
   if (getSpecificAvatarsOfUser != null) {
@@ -160,7 +178,21 @@ export function moderatorResetBlockList(_username: string): void {
     avatars.set(_username, getSpecificAvatarsOfUser);
   }
 };
+export function moderatorResetBanList(_username: string): void {
+  // Moderator function to reset the ban list completely
+
+  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
+  let getSpecificAvatarsOfUser = avatars.get(_username);
+  if (getSpecificAvatarsOfUser != null) {
+    getSpecificAvatarsOfUser.resetBanList();
+    avatars.set(_username, getSpecificAvatarsOfUser);
+  }
+};
+
+
 export function moderatorBlockListAvatar(_username: string, _avatarIndex: u32): void {
+  // Moderator function in event of needing to block a character's drawing temporarily, this will prompt on the frontend that it requires updating to the drawing to automatically unblock
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
   let getSpecificAvatarsOfUser = avatars.get(_username);
   if (getSpecificAvatarsOfUser != null) {
@@ -168,7 +200,32 @@ export function moderatorBlockListAvatar(_username: string, _avatarIndex: u32): 
     avatars.set(_username, getSpecificAvatarsOfUser);
   }
 };
+
+export function moderatorBanAvatar(_username: string, _avatarIndex: u32): void {
+  // Moderator function to temporarily ban a character, this is in the event for anti-cheating, hopefully never needs to be used
+
+  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
+  let getSpecificAvatarsOfUser = avatars.get(_username);
+  if (getSpecificAvatarsOfUser != null) {
+    getSpecificAvatarsOfUser.setIsBanned(_avatarIndex);
+    avatars.set(_username, getSpecificAvatarsOfUser);
+  }
+};
+
+export function moderatorRemoveBan(_username: string, _avatarIndex: u32): void {
+  // Moderator function to remove ban on character
+
+  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
+  let getSpecificAvatarsOfUser = avatars.get(_username);
+  if (getSpecificAvatarsOfUser != null) {
+    getSpecificAvatarsOfUser.removeIsBanned(_avatarIndex);
+    avatars.set(_username, getSpecificAvatarsOfUser);
+  }
+};
+
 export function moderatorRemoveListing(_username: string, _avatarId: u32): void {
+  // Moderator function to manually remove a listing, in the event of some conflict with a blocked or banned character being on the market
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove listings from user.");
 
   let theseOrders = orders.get(_username);
@@ -188,6 +245,8 @@ export function moderatorRemoveListing(_username: string, _avatarId: u32): void 
 };
 
 export function moderatorChangeDescription(_username: string, _avatarIndex: u32, _newDescription: string): void {
+  // Moderator function to change a description of a character
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate descriptions.");
   let getSpecificAvatarsOfUser = avatars.get(_username);
   if (getSpecificAvatarsOfUser != null) {
@@ -197,7 +256,9 @@ export function moderatorChangeDescription(_username: string, _avatarIndex: u32,
 }
 
 export function setAvatarPrice(_price: string): void {
-  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
+  // Moderator function to update character creation donation cost
+
+  assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to set avatar price.");
   let game_rewards_state = gameRewardsState.get("gameRewardsState");
   if (game_rewards_state != null) {
     game_rewards_state.setAvatarPrice(u128.from(_price));
@@ -206,6 +267,8 @@ export function setAvatarPrice(_price: string): void {
 }
 
 export function setMaxAvatars(_amount: u32): void {
+  // Moderator function to increase the amount of characters able to be minted by donation
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "Must be owner to moderate and remove avatar from user.");
   let game_rewards_state = gameRewardsState.get("gameRewardsState");
   if (game_rewards_state != null) {
@@ -214,7 +277,10 @@ export function setMaxAvatars(_amount: u32): void {
   }
 }
 
-export function mintAvatar(incomingAvatarData: string, description: string): void {
+export function mintAvatar(incomingAvatarData: string, description: string): u32 {
+  // Open function to create a character, this checks to make sure the amount of characters never exceeds the hard limit, as well as to ensure proper donation price match
+  // The game supports a player owning multiple characters, and keeps them in ChainAvatarForUser
+
   let game_rewards_state = gameRewardsState.get("gameRewardsState");
   assert(game_rewards_state != null, "Game rewards state was null.");
 
@@ -232,26 +298,29 @@ export function mintAvatar(incomingAvatarData: string, description: string): voi
     if (tryMyAvatars == null) {
       let newChainAvatarsForUser = new ChainAvatarsForUser(game.avatarMintCount + 1, context.predecessor, incomingAvatarData, description, 1, 0);
       avatars.set(context.predecessor, newChainAvatarsForUser);
+
     } else {
       tryMyAvatars.addNewAvatarForThisPlayer(game.avatarMintCount + 1, incomingAvatarData, description, 1, 0);
       avatars.set(context.predecessor, tryMyAvatars);
     }
+
+    let thisPlayer = players.get(context.predecessor);
+    if (thisPlayer == null) {
+      players.set(context.predecessor, new Player(0, 0, 1, context.predecessor, context.blockIndex))
+    }
+
     game.increaseAvatarMintCount();
     storage.set("game", game);
-  }
-
-};
-
-export function getWordsList(): string | null {
-  let game = storage.get<Game>("game");
-  if (game != null) {
-    return game.wordsList;
+    return (game.avatarMintCount + 1);
   } else {
-    return "";
+    return -1;
   }
+
 };
 
 export function getAvatarMintCount(): u32 {
+  // View function to get the current minting count
+
   let game = storage.get<Game>("game");
   if (game != null) {
     return game.avatarMintCount;
@@ -260,56 +329,31 @@ export function getAvatarMintCount(): u32 {
   }
 };
 
-export function getLevelWords(level: u32): Array<u32> {
 
-  const resultList: Array<u32> = [];
-  const rng = new RNG<u32>(1, 300);
+export function gameFinalityUpdate(addressToAdjust: string, previousLevelCompleted: u32, previousWpm: u32, previousAccuracy: u32, correctCount: u32, _avatarIndex: u32): void {
+  // Special function only able to be used by the game system, which checks various conditions for blocks or bans, as well as some basic anti-cheating
+  // It saves all the progress of game play for that character, as well as player details, then performs required earnings increase taken from the available game rewards
 
-  let size = 5;
-  if (level == 2) {
-    size = 7;
-  } else if (level == 3) {
-    size = 10;
-  } else if (level >= 4) {
-    size = 15;
+  assert((context.predecessor == GAME_SYSTEM), "o");
+
+  assert(<i32>previousWpm < MAX_WPM, "max wpm");
+  assert(<i32>previousAccuracy <= MAX_ACCURACY, "max accuracy");
+
+  let myAvatars = avatars.get(addressToAdjust);
+  assert(myAvatars != null, "Must own an avatar to play.");
+
+  if (myAvatars != null) {
+    assert(!myAvatars.isOnBlockList(_avatarIndex), "Unable to set game finality when on block list.");
+    assert(!myAvatars.isOnBanned(_avatarIndex), "Unable to set game finality when banned.");
   }
 
-  for (let i = 0; i < size; i++) {
-    resultList[i] = rng.next();
-  }
-
-  return resultList;
-}
-
-export function updateLevel(level: u32): void {
-  let avatar = avatars.get(context.predecessor);
-  assert(avatar != null, "Must own an avatar to play.");
-  let thisPlayer = players.get(context.predecessor);
-
-  if (thisPlayer == null) {
-    assert(level == 1, "l");
-    players.set(context.predecessor, new Player(0, 0, 1, context.predecessor, context.blockIndex))
-  } else {
-    if (level != 1) {
-      assert(level == thisPlayer.previousLevelCompleted + 1, "Must go in order of levels."); // + 1
-    }
-    thisPlayer.updateLevel(level);
-    players.set(context.predecessor, thisPlayer);
-  }
-};
-
-export function submitLastLevelPlayed(level: u32, wpm: u32, accuracy: u32, correctCount: u32, _avatarIndex: u32): Player | null {
-  assert(<i32>wpm < MAX_WPM, "max wpm");
-  assert(<i32>accuracy <= MAX_ACCURACY, "max accuracy");
-
-  let thisPlayer = players.get(context.predecessor);
+  let thisPlayer = players.get(addressToAdjust);
 
   if (thisPlayer == null) {
     logging.log("Player was null here, when it should never be.");
   } else {
 
-    assert((level == (thisPlayer.previousLevelCompleted)), "Must submit the previous level.");
-    thisPlayer.updatePreviousLevelCompleted(wpm, accuracy);
+    thisPlayer.updatePreviousLevelCompleted(previousWpm, previousAccuracy);
     thisPlayer.updateBlockIndex(context.blockIndex);
 
     let game_rewards_state = gameRewardsState.get("gameRewardsState");
@@ -332,22 +376,24 @@ export function submitLastLevelPlayed(level: u32, wpm: u32, accuracy: u32, corre
       }
     }
 
-    let myAvatars = avatars.get(context.predecessor);
-    thisPlayer.updateLevel(level);
+    thisPlayer.updateLevel(previousLevelCompleted);
 
     if (myAvatars != null) {
-      myAvatars.setHighestLevel(_avatarIndex, level);
+      myAvatars.setHighestLevel(_avatarIndex, previousLevelCompleted);
       myAvatars.increaseCorrectWords(_avatarIndex, correctCount);
-      avatars.set(context.predecessor, myAvatars);
+      avatars.set(addressToAdjust, myAvatars);
     }
 
-    players.set(context.predecessor, thisPlayer);
+    players.set(addressToAdjust, thisPlayer);
   }
 
-  return thisPlayer;
-};
+  //return thisPlayer;
+}
+
 
 export function getLastLevelPlayed(): u32 {
+  // View function to get the last level played by the player
+
   let thisPlayer = players.get(context.predecessor);
   if (thisPlayer != null) {
     return thisPlayer.previousLevelCompleted
@@ -357,11 +403,15 @@ export function getLastLevelPlayed(): u32 {
 };
 
 export function sendDonations(_amountInNear: u128): void {
+  // Method to send specified donation amount back to the game funds
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "o");
   ContractPromiseBatch.create(GAME_OWN).transfer(_amountInNear);
 };
 
 export function updateAvatarDescription(_avatarIndex: u32, _description: string): void {
+  // Method for a player to update a specific character's description, based on the conditions allowed and reducing a fee to do so
+
   assert(<i32>_description.length < MAX_DESC, "d")
   let myAvatars = avatars.get(context.predecessor);
   let myPlayer = players.get(context.predecessor);
@@ -385,6 +435,8 @@ export function updateAvatarDescription(_avatarIndex: u32, _description: string)
 };
 
 export function updateAvatarCharacter(_avatarIndex: u32, incomingAvatarData: string): void {
+  // Method for a player to update a character's drawing completely, taking into consideration a fee to do so
+
   let myAvatars = avatars.get(context.predecessor);
   assert(myAvatars != null, "You don't have any avatars.");
 
@@ -411,6 +463,8 @@ export function updateAvatarCharacter(_avatarIndex: u32, incomingAvatarData: str
 };
 
 export function importAvatar(addressForOwner: string, incomingAvatarData: string, description: string, level: u32, correctWords: u32): void {
+  // Method for owners to import a character manually. This function may only need to be used in the event of a full new deployment and manually importing all characters back to their owners.
+
   assert((context.predecessor == OWN || context.predecessor == GAME_OWN), "o");
   assert(description.length < MAX_DESC, "d");
 
@@ -425,6 +479,13 @@ export function importAvatar(addressForOwner: string, incomingAvatarData: string
 
       game.increaseAvatarMintCount();
       storage.set("game", game);
+
+
+      let thisPlayer = players.get(context.predecessor);
+      if (thisPlayer == null) {
+        players.set(context.predecessor, new Player(0, 0, 1, context.predecessor, context.blockIndex))
+      }
+
     }
   } else {
     let game = storage.get<Game>("game");
@@ -441,13 +502,18 @@ export function importAvatar(addressForOwner: string, incomingAvatarData: string
 }
 
 export function setForSale(_avatarId: u32, price: string): void {
+  // Method for a player to set a character on the market, this checks to ensure validity of the market order, and puts the character as an OrderForUser
+  // This allows other players to buy a character which is an order directly from another user, where the game takes a fixed royalty
+
   let myAvatars = avatars.get(context.predecessor);
   assert(myAvatars != null, "You don't have any avatars to sell.");
 
   if (myAvatars != null) {
     assert(myAvatars.isOwnedByMe(_avatarId), "This is not owned by you.");
     let thisIndex = myAvatars.getPersonalIndex(_avatarId);
+    logging.log("personal index is: " + thisIndex.toString());
     assert(!myAvatars.isOnBlockList(thisIndex), "Unable to create order when on block list.");
+    assert(!myAvatars.isOnBanned(thisIndex), "Unable to create order when banned.");
   }
 
   let myPlayer = players.get(context.predecessor);
@@ -500,6 +566,8 @@ export function setForSale(_avatarId: u32, price: string): void {
 };
 
 export function updateForSale(_avatarId: u32, isForSale: boolean, price: string): void {
+  // Method for a player to update the cost at which the market order is set at
+
   let myAvatars = avatars.get(context.predecessor);
   assert(myAvatars != null, "You don't have any avatars to sell.");
 
@@ -512,6 +580,7 @@ export function updateForSale(_avatarId: u32, isForSale: boolean, price: string)
       assert(myAvatars.isOwnedByMe(_avatarId), "This is not owned by you.");
       let thisIndex = myAvatars.getPersonalIndex(_avatarId);
       assert(!myAvatars.isOnBlockList(thisIndex), "Unable to create order when on block list.");
+      assert(!myAvatars.isOnBanned(thisIndex), "Unable to create order when banned.");
     }
 
     let theseOrders = orders.get(context.predecessor);
@@ -537,6 +606,8 @@ export function updateForSale(_avatarId: u32, isForSale: boolean, price: string)
 };
 
 export function removeListing(_avatarId: u32): void {
+  // Method for a player to remove an order listing
+
   let myAvatars = avatars.get(context.predecessor);
   assert(myAvatars != null, "You don't have any avatars to sell.");
 
@@ -559,6 +630,10 @@ export function removeListing(_avatarId: u32): void {
 };
 
 export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32): void {
+  // Function that allows another player to buy a character which is listed as an Order
+  // It checks to ensure validity of the order, as well as ensure price matching and takes a royalty
+  // This sends the amount of near to the owner of owner of the character who owns the Order
+
   let myAvatars = avatars.get(context.predecessor);
 
   if (myAvatars != null) {
@@ -574,6 +649,7 @@ export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32): 
     thisOwnersAvatarIndex = ownersAvatars.getPersonalIndex(_avatarIdToBuy);
     assert(thisOwnersAvatarIndex != -1, "Avatar was not found for the true owner.");
     assert(!ownersAvatars.isOnBlockList(thisOwnersAvatarIndex), "Unable to buy order when item is on block list.");
+    assert(!ownersAvatars.isOnBanned(thisOwnersAvatarIndex), "Unable to buy order when item is banned.");
   }
 
   let valueDeposited = context.attachedDeposit;
@@ -600,6 +676,7 @@ export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32): 
             if (ownersAvatars != null) {
               let newChainAvatarsForUser = new ChainAvatarsForUser(_avatarIdToBuy, context.predecessor, ownersAvatars.datas[thisOwnersAvatarIndex], ownersAvatars.descriptions[thisOwnersAvatarIndex], ownersAvatars.highestLevels[thisOwnersAvatarIndex], ownersAvatars.correctWordTotals[thisOwnersAvatarIndex]);
               avatars.set(context.predecessor, newChainAvatarsForUser);
+
               ownersAvatars.removeThisAvatar(thisOwnersAvatarIndex);
               avatars.set(addressOfTrueOwner, ownersAvatars);
             }
@@ -607,9 +684,15 @@ export function buySomeAvatar(addressOfTrueOwner: string, _avatarIdToBuy: u32): 
             if (ownersAvatars != null) {
               myAvatars.addNewAvatarForThisPlayer(_avatarIdToBuy, ownersAvatars.datas[thisOwnersAvatarIndex], ownersAvatars.descriptions[thisOwnersAvatarIndex], ownersAvatars.highestLevels[thisOwnersAvatarIndex], ownersAvatars.correctWordTotals[thisOwnersAvatarIndex]);
               avatars.set(context.predecessor, myAvatars);
+
               ownersAvatars.removeThisAvatar(thisOwnersAvatarIndex);
               avatars.set(addressOfTrueOwner, ownersAvatars);
             }
+          }
+
+          let thisPlayer = players.get(context.predecessor);
+          if (thisPlayer == null) {
+            players.set(context.predecessor, new Player(0, 0, 1, context.predecessor, context.blockIndex))
           }
 
           ordersOfOwner.splice(i, 1); // Remove this sold item from the old owner's array. Will wait until new owner tries to sell it, to update it's array.
